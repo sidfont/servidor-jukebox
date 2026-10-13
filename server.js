@@ -10,7 +10,7 @@ app.use(cors());
 const db = new Datastore({ filename: 'faturamento.db', autoload: true });
 
 const MAQUINA_ID = "Box 05 Teste"; 
-const BLYNK_TOKEN = "ASLsOlIjoiQ2Vu-MVD-LIuYjJVnR4gM"; 
+const BLYNK_TOKEN = "ASLzBlIjoi4Q2Vo-HVD-LiuYj1Msr4gM"; 
 
 function obterQuantidadePulsos(valor) {
     if (valor >= 50) return 50;
@@ -19,6 +19,20 @@ function obterQuantidadePulsos(valor) {
     if (valor >= 5) return 5;
     if (valor >= 2) return 2;
     return 0; 
+}
+
+// FUNÇÃO AUXILIAR PARA ATUALIZAR STATUS NO BLYNK
+async function enviarSinalBlynk(pino, valor) {
+    const url = "https://blynk.cloud" + BLYNK_TOKEN + "&" + pino + "=" + valor;
+    await axios.get(url).catch(() => {});
+}
+
+// INICIALIZA AS LUZES DO SISTEMA (Acende Online=1 e apaga Offline=0)
+async function inicializarLuzesStatus() {
+    console.log("-> Configurando LEDs de status no Blynk...");
+    await enviarSinalBlynk("V26", "1"); // Verde Online LIGA
+    await enviarSinalBlynk("V27", "0"); // Azul Offline DESLIGA
+    await enviarSinalBlynk("V25", "0"); // Vermelho Pulso DESLIGA
 }
 
 app.get('/api/faturamento', (req, res) => {
@@ -64,30 +78,34 @@ app.post('/webhook', async (req, res) => {
                 
                 db.update({ maquina: MAQUINA_ID }, { $inc: { totalAcumulado: valorPix } }, { upsert: true });
 
+                console.log("-> Disparando " + pulsosParaEnviar + " pulsos para a Box Jukebox...");
+                
                 for (let i = 1; i <= pulsosParaEnviar; i++) {
                     console.log("Pulso " + i + " de " + pulsosParaEnviar);
                     
-                    const urlParte1 = "https://blynk.cloud";
-                    const urlParte2 = "/external/api/update?token=";
-                    const tkn = "ASLzBlIjoi4Q2Vo-HVD-LiuYj1Msr4gM";
+                    // ACENDE O LED VERMELHO DE PULSO (V25=1) E LIGA O RELÉ DA MÁQUINA (V1=1)
+                    await enviarSinalBlynk("V25", "1");
+                    await enviarSinalBlynk("V1", "1");
+                    await new Promise(r => setTimeout(r, 500)); 
                     
-                    const linkLiga = urlParte1 + urlParte2 + tkn + "&D23=1";
-                    const linkDesliga = urlParte1 + urlParte2 + tkn + "&D23=0";
-
-                    // 1. Liga o relé e espera meio segundo ligado
-                    await axios.get(linkLiga).catch(()=>{});
-                    await new Promise(r => setTimeout(r, 600)); 
-                    
-                    // 2. Desliga o relé e espera meio segundo desligado para o próximo estalo
-                    await axios.get(linkDesliga).catch(()=>{});
-                    await new Promise(r => setTimeout(r, 1000)); 
+                    // APAGA O LED VERMELHO DE PULSO (V25=0) E DESLIGA O RELÉ DA MÁQUINA (V1=0)
+                    await enviarSinalBlynk("V25", "0");
+                    await enviarSinalBlynk("V1", "0");
+                    await new Promise(r => setTimeout(r, 500)); 
                 }
                 console.log("=== Creditos entregues com sucesso! ===\n");
             }
         }
     } catch (erro) {
         console.log("Erro webhook:", erro.message);
+        // Se houver falha crítica, aciona sinal de falha física
+        await enviarSinalBlynk("V26", "0"); // Desliga Verde
+        await enviarSinalBlynk("V27", "1"); // Acende Azul Offline
     }
 });
 
-app.listen(3000, () => console.log('Servidor Jukebox Ativo na porta 3000!'));
+app.listen(3000, async () => {
+    console.log('Servidor Jukebox Ativo na porta 3000!');
+    // Executa a configuração inicial de luzes assim que o Render liga
+    await inicializarLuzesStatus();
+});
