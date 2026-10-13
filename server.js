@@ -43,7 +43,7 @@ app.get('/api/faturamento', (req, res) => {
 });
 
 app.post('/api/zerar-caixa', (req, res) => {
-    db.update({ maquina: MAQUINA_ID }, { \$set: { totalAcumulado: 0 } }, { upsert: true }, () => {
+    db.update({ maquina: MAQUINA_ID }, { $set: { totalAcumulado: 0 } }, { upsert: true }, () => {
         res.json({ success: true });
     });
 });
@@ -55,7 +55,7 @@ app.post('/api/simular-pix', async (req, res) => {
     try {
         const pulsosParaEnviar = obterQuantidadePulsos(parseFloat(valor));
         if (pulsosParaEnviar > 0) {
-            db.update({ maquina: MAQUINA_ID }, { \$inc: { totalAcumulado: parseFloat(valor) } }, { upsert: true });
+            db.update({ maquina: MAQUINA_ID }, { $inc: { totalAcumulado: parseFloat(valor) } }, { upsert: true });
             await enviarSinalBlynk("V1", pulsosParaEnviar);
         }
         res.json({ success: true });
