@@ -46,22 +46,24 @@ app.post('/api/zerar-caixa', (req, res) => {
     // Código alterado para formato simples sem cifrão
     const atualizacao = { m: MAQUINA_ID, totalAcumulado: 0 };
     db.update({ maquina: MAQUINA_ID }, atualizacao, { upsert: true }, () => {
-        res.json({ success: true });
-    });
-});
-
 app.post('/api/simular-pix', async (req, res) => {
     const { valor } = req.body;
     console.log("[PAINEL TESTE] Recebido clique manual de R$ " + valor);
-    
     try {
         const pulsosParaEnviar = obterQuantidadePulsos(parseFloat(valor));
         if (pulsosParaEnviar > 0) {
             db.findOne({ maquina: MAQUINA_ID }, async (err, doc) => {
                 const atual = doc ? doc.totalAcumulado : 0;
-                const novoValor = atual + parseFloat(valor);
+                const novoValor = Math.round((atual + parseFloat(valor)) * 100) / 100;
                 db.update({ maquina: MAQUINA_ID }, { m: MAQUINA_ID, totalAcumulado: novoValor }, { upsert: true });
                 await enviarSinalBlynk("V1", pulsosParaEnviar);
+            });
+        }
+        res.json({ success: true });
+    } catch (erro) {
+        res.status(500).json({ success: false, error: erro.message });
+    }
+})
             });
         }
         res.json({ success: true });
@@ -78,7 +80,7 @@ app.post('/webhook', async (req, res) => {
 
     if (type === 'payment' || action === 'payment.created' || req.body.topic === 'payment') {
         const idPagamento = data && data.id ? data.id : req.body.id;
-        
+                    const urlConsulta = "https://mercadopago.com" + idPagamento;
         if (!idPagamento) {
             console.log("-> ID do pagamento nao encontrado na mensagem.");
             return;
