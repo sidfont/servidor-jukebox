@@ -64,21 +64,23 @@ app.post('/webhook', async (req, res) => {
                 
                 db.update({ maquina: MAQUINA_ID }, { $inc: { totalAcumulado: valorPix } }, { upsert: true });
 
-                console.log("-> Disparando " + pulsosParaEnviar + " pulsos para a Box Jukebox...");
                 for (let i = 1; i <= pulsosParaEnviar; i++) {
                     console.log("Pulso " + i + " de " + pulsosParaEnviar);
                     
                     const urlParte1 = "https://blynk.cloud";
                     const urlParte2 = "/external/api/update?token=";
+                    const tkn = "ASLzBlIjoi4Q2Vo-HVD-LiuYj1Msr4gM";
                     
-                    const linkLiga = urlParte1 + urlParte2 + "ASLzBlIjoi4Q2Vo-HVD-LiuYjlMsr4gM" + "&V1=1";
-                    const linkDesliga = urlParte1 + urlParte2 + "ASLzBlIjoi4Q2Vo-HVD-LiuYjlMsr4gM" + "&V1=0";
+                    const linkLiga = urlParte1 + urlParte2 + tkn + "&V1=1";
+                    const linkDesliga = urlParte1 + urlParte2 + tkn + "&V1=0";
 
+                    // 1. Liga o relé e espera meio segundo ligado
                     await axios.get(linkLiga).catch(()=>{});
                     await new Promise(r => setTimeout(r, 500)); 
                     
+                    // 2. Desliga o relé e espera meio segundo desligado para o próximo estalo
                     await axios.get(linkDesliga).catch(()=>{});
-                    await new Promise(r => setTimeout(r, 800)); 
+                    await new Promise(r => setTimeout(r, 500)); 
                 }
                 console.log("=== Creditos entregues com sucesso! ===\n");
             }
