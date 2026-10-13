@@ -43,20 +43,26 @@ app.get('/api/faturamento', (req, res) => {
 });
 
 app.post('/api/zerar-caixa', (req, res) => {
-    db.update({ maquina: MAQUINA_ID }, { $set: { totalAcumulado: 0 } }, { upsert: true }, () => {
+    // Código alterado para formato simples sem cifrão
+    const atualizacao = { m: MAQUINA_ID, totalAcumulado: 0 };
+    db.update({ maquina: MAQUINA_ID }, atualizacao, { upsert: true }, () => {
         res.json({ success: true });
     });
 });
 
 app.post('/api/simular-pix', async (req, res) => {
     const { valor } = req.body;
-    console.log("[PAINEL TESTE] Recebido clique manual de R\$ " + valor);
+    console.log("[PAINEL TESTE] Recebido clique manual de R$ " + valor);
     
     try {
         const pulsosParaEnviar = obterQuantidadePulsos(parseFloat(valor));
         if (pulsosParaEnviar > 0) {
-            db.update({ maquina: MAQUINA_ID }, { $inc: { totalAcumulado: parseFloat(valor) } }, { upsert: true });
-            await enviarSinalBlynk("V1", pulsosParaEnviar);
+            db.findOne({ maquina: MAQUINA_ID }, async (err, doc) => {
+                const atual = doc ? doc.totalAcumulado : 0;
+                const novoValor = atual + parseFloat(valor);
+                db.update({ maquina: MAQUINA_ID }, { m: MAQUINA_ID, totalAcumulado: novoValor }, { upsert: true });
+                await enviarSinalBlynk("V1", pulsosParaEnviar);
+            });
         }
         res.json({ success: true });
     } catch (erro) {
@@ -68,7 +74,7 @@ app.post('/webhook', async (req, res) => {
     res.sendStatus(200); 
 
     const { action, type, data } = req.body;
-    console.log(`[WEBHOOK] Notificacao recebida do banco. Tipo: ${type || req.body.topic}, Acao: ${action}`);
+    console.log("[WEBHOOK] Notificacao recebida do banco.");
 
     if (type === 'payment' || action === 'payment.created' || req.body.topic === 'payment') {
         const idPagamento = data && data.id ? data.id : req.body.id;
@@ -90,15 +96,18 @@ app.post('/webhook', async (req, res) => {
                 const valorPixReal = parseFloat(respostaMP.data.transaction_amount);
                 const pulsosParaEnviar = obterQuantidadePulsos(valorPixReal);
 
-                console.log("\n=== PIX REAL APROVADO: R\$ " + valorPixReal.toFixed(2) + " ===");
+                console.log("\n=== PIX REAL APROVADO ===");
 
                 if (pulsosParaEnviar > 0) {
-                    db.update({ maquina: MAQUINA_ID }, { \$inc: { totalAcumulado: valorPixReal } }, { upsert: true });
-                    console.log("-> Despachando " + pulsosParaEnviar + " creditos para a Box...");
-                    await enviarSinalBlynk("V1", pulsosParaEnviar);
-                    console.log("=== Creditos entregues na Jukebox! ===\n");
+                    db.findOne({ maquina: MAQUINA_ID }, async (err, doc) => {
+                        const atual = doc ? doc.totalAcumulado : 0;
+                        const novoValor = atual + valorPixReal;
+                        db.update({ maquina: MAQUINA_ID }, { m: MAQUINA_ID, totalAcumulado: novoValor }, { upsert: true });
+                        console.log("-> Despachando " + pulsosParaEnviar + " creditos para a Box...");
+                        await enviarSinalBlynk("V1", pulsosParaEnviar);
+                    });
                 } else {
-                    console.log("-> O valor recebido nao atinge o minimo para gerar creditos.");
+                    console.log("-> O valor recebido nao atinge o minimo.");
                 }
             } else {
                 console.log("-> Status do pagamento ainda nao esta aprovado.");
