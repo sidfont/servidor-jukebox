@@ -85,7 +85,11 @@ app.post('/webhook', async (req, res) => {
         console.log("-> ID do Pix detectado: " + idPagamento + ". Consultando valores no Mercado Pago...");
 
         try {
-            const urlConsulta = "https://mercadopago.com" + idPagamento;
+            // LINK DO MERCADO PAGO CORRIGIDO E MONTADO EM PEDAÇOS CONTRA TRADUTORES:
+            const mpUrl1 = "https://mercadopago.com";
+            const mpUrl2 = "/v1/payments/";
+            const urlConsulta = mpUrl1 + mpUrl2 + idPagamento;
+
             const respostaMP = await axios.get(urlConsulta, {
                 headers: { 'Authorization': "Bearer " + MP_ACCESS_TOKEN }
             });
@@ -115,6 +119,8 @@ app.post('/webhook', async (req, res) => {
         }
     }
 });
+
+app.use((req, res) => { res.status(404).send("Rota nao encontrada"); });
 
 app.listen(3000, async () => {
     console.log('Servidor Jukebox de Producao Ativo na porta 3000!');
