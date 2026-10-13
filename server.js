@@ -21,15 +21,17 @@ function obterQuantidadePulsos(valor) {
     return 0; 
 }
 
-// FUNÇÃO AUXILIAR PARA ATUALIZAR STATUS NO BLYNK
+// FUNÇÃO BLINDADA COM O ENDEREÇO COMPLETO DO BLYNK (SEM CORTAR)
 async function enviarSinalBlynk(pino, valor) {
-    const url = "https://blynk.cloud" + BLYNK_TOKEN + "&" + pino + "=" + valor;
+    const urlParte1 = "https://blynk.cloud";
+    const urlParte2 = "/external/api/update?token=";
+    const url = urlParte1 + urlParte2 + BLYNK_TOKEN + "&" + pino + "=" + valor;
     await axios.get(url).catch(() => {});
 }
 
-// INICIALIZA AS LUZES DO SISTEMA (Acende Online=1 e apaga Offline=0)
+// INICIALIZA AS LUZES DO SISTEMA USANDO A FAIXA DE PINOS DE STATUS (V25 a V27)
 async function inicializarLuzesStatus() {
-    console.log("-> Configurando LEDs de status no Blynk...");
+    console.log("-> Configurando LEDs de status na faixa correta do Blynk...");
     await enviarSinalBlynk("V26", "1"); // Verde Online LIGA
     await enviarSinalBlynk("V27", "0"); // Azul Offline DESLIGA
     await enviarSinalBlynk("V25", "0"); // Vermelho Pulso DESLIGA
@@ -83,22 +85,22 @@ app.post('/webhook', async (req, res) => {
                 for (let i = 1; i <= pulsosParaEnviar; i++) {
                     console.log("Pulso " + i + " de " + pulsosParaEnviar);
                     
-                    // ACENDE O LED VERMELHO DE PULSO (V25=1) E LIGA O RELÉ DA MÁQUINA (V1=1)
+                    // ACENDE O LED VERMELHO DE PULSO (V25) E LIGA O RELÉ DA MÁQUINA (V1)
                     await enviarSinalBlynk("V25", "1");
                     await enviarSinalBlynk("V1", "1");
-                    await new Promise(r => setTimeout(r, 500)); 
+                    await new Promise(r => setTimeout(r, 400)); 
                     
-                    // APAGA O LED VERMELHO DE PULSO (V25=0) E DESLIGA O RELÉ DA MÁQUINA (V1=0)
+                    // APAGA O LED VERMELHO DE PULSO (V25) E DESLIGA O RELÉ DA MÁQUINA (V1)
                     await enviarSinalBlynk("V25", "0");
                     await enviarSinalBlynk("V1", "0");
-                    await new Promise(r => setTimeout(r, 500)); 
+                    await new Promise(r => setTimeout(r, 400)); 
                 }
                 console.log("=== Creditos entregues com sucesso! ===\n");
             }
         }
     } catch (erro) {
         console.log("Erro webhook:", erro.message);
-        // Se houver falha crítica, aciona sinal de falha física
+        // Se houver falha, aciona o status offline na faixa mapeada
         await enviarSinalBlynk("V26", "0"); // Desliga Verde
         await enviarSinalBlynk("V27", "1"); // Acende Azul Offline
     }
@@ -106,6 +108,6 @@ app.post('/webhook', async (req, res) => {
 
 app.listen(3000, async () => {
     console.log('Servidor Jukebox Ativo na porta 3000!');
-    // Executa a configuração inicial de luzes assim que o Render liga
+    // Dispara a sinalização dos pinos de status assim que entra no ar
     await inicializarLuzesStatus();
 });
