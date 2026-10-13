@@ -43,7 +43,7 @@ app.get('/api/faturamento', (req, res) => {
 });
 
 app.post('/api/zerar-caixa', (req, res) => {
-    db.update({ maquina: MAQUINA_ID }, { $set: { totalAcumulado: 0 } }, { upsert: true }, () => {
+    db.update({ maquina: MAQUINA_ID }, { \$set: { totalAcumulado: 0 } }, { upsert: true }, () => {
         res.json({ success: true });
     });
 });
@@ -55,7 +55,7 @@ app.post('/api/simular-pix', async (req, res) => {
     try {
         const pulsosParaEnviar = obterQuantidadePulsos(parseFloat(valor));
         if (pulsosParaEnviar > 0) {
-            db.update({ maquina: MAQUINA_ID }, { $inc: { totalAcumulado: parseFloat(valor) } }, { upsert: true });
+            db.update({ maquina: MAQUINA_ID }, { \$inc: { totalAcumulado: parseFloat(valor) } }, { upsert: true });
             await enviarSinalBlynk("V1", pulsosParaEnviar);
         }
         res.json({ success: true });
@@ -81,16 +81,16 @@ app.post('/webhook', async (req, res) => {
         console.log("-> ID do Pix detectado: " + idPagamento + ". Consultando valores no Mercado Pago...");
 
         try {
-            const urlConsulta = `https://mercadopago.com{idPagamento}`;
+            const urlConsulta = "https://mercadopago.com" + idPagamento;
             const respostaMP = await axios.get(urlConsulta, {
-                headers: { 'Authorization': `Bearer ${MP_ACCESS_TOKEN}` }
+                headers: { 'Authorization': "Bearer " + MP_ACCESS_TOKEN }
             });
 
             if (respostaMP.data && respostaMP.data.status === 'approved') {
                 const valorPixReal = parseFloat(respostaMP.data.transaction_amount);
                 const pulsosParaEnviar = obterQuantidadePulsos(valorPixReal);
 
-                console.log(`\n=== PIX REAL APROVADO: R$ ${valorPixReal.toFixed(2)} ===`);
+                console.log("\n=== PIX REAL APROVADO: R\$ " + valorPixReal.toFixed(2) + " ===");
 
                 if (pulsosParaEnviar > 0) {
                     db.update({ maquina: MAQUINA_ID }, { \$inc: { totalAcumulado: valorPixReal } }, { upsert: true });
