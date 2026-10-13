@@ -75,10 +75,10 @@ app.post('/webhook', async (req, res) => {
                     const linkDesliga = urlParte1 + urlParte2 + "ASLzBlIjoi4Q2Vo-HVD-LiuYjlMsr4gM" + "&V1=0";
 
                     await axios.get(linkLiga).catch(()=>{});
-                    await new Promise(r => setTimeout(r, 100)); 
+                    await new Promise(r => setTimeout(r, 300)); 
                     
                     await axios.get(linkDesliga).catch(()=>{});
-                    await new Promise(r => setTimeout(r, 50)); 
+                    await new Promise(r => setTimeout(r, 300)); 
                 }
                 console.log("=== Creditos entregues com sucesso! ===\n");
             }
