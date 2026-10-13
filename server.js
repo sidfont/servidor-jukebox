@@ -85,15 +85,21 @@ app.post('/webhook', async (req, res) => {
                 for (let i = 1; i <= pulsosParaEnviar; i++) {
                     console.log("Pulso " + i + " de " + pulsosParaEnviar);
                     
-                    // ACENDE O LED VERMELHO DE PULSO (V25) E LIGA O RELÉ DA MÁQUINA (V1)
+                    // 1. ACENDE A LUZ VERMELHA DE PULSO (V25)
                     await enviarSinalBlynk("V25", "1");
-                    await enviarSinalBlynk("V1", "1");
-                    await new Promise(r => setTimeout(r, 400)); 
+                    await new Promise(r => setTimeout(r, 60)); 
                     
-                    // APAGA O LED VERMELHO DE PULSO (V25) E DESLIGA O RELÉ DA MÁQUINA (V1)
+                    // 2. ATIVA O RELÉ (V1) E ESPERA 600ms COM TUDO LIGADO (DÁ O ESTALO)
+                    await enviarSinalBlynk("V1", "1");
+                    await new Promise(r => setTimeout(r, 600)); 
+                    
+                    // 3. APAGA A LUZ VERMELHA (V25)
                     await enviarSinalBlynk("V25", "0");
+                    await new Promise(r => setTimeout(r, 60)); 
+                    
+                    // 4. DESLIGA O RELÉ (V1) E DÁ 600ms DE DESCANSO ANTES DO PRÓXIMO ESTALO
                     await enviarSinalBlynk("V1", "0");
-                    await new Promise(r => setTimeout(r, 400)); 
+                    await new Promise(r => setTimeout(r, 600)); 
                 }
                 console.log("=== Creditos entregues com sucesso! ===\n");
             }
