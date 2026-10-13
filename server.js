@@ -76,11 +76,11 @@ app.post('/webhook', async (req, res) => {
 
                     // 1. Liga o relé e espera meio segundo ligado
                     await axios.get(linkLiga).catch(()=>{});
-                    await new Promise(r => setTimeout(r, 500)); 
+                    await new Promise(r => setTimeout(r, 600)); 
                     
                     // 2. Desliga o relé e espera meio segundo desligado para o próximo estalo
                     await axios.get(linkDesliga).catch(()=>{});
-                    await new Promise(r => setTimeout(r, 500)); 
+                    await new Promise(r => setTimeout(r, 1000)); 
                 }
                 console.log("=== Creditos entregues com sucesso! ===\n");
             }
