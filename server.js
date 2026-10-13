@@ -11,7 +11,7 @@ const db = new Datastore({ filename: 'faturamento.db', autoload: true });
 
 const MAQUINA_ID = "Box 05 Teste"; 
 const BLYNK_TOKEN = "ASLzBlIjoi4Q2Vo-HVD-LiuYj1Msr4gM"; 
-const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN; // Puxa a credencial que salvamos no Render
+const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN;
 
 function obterQuantidadePulsos(valor) {
     if (valor >= 50) return 50;
@@ -48,7 +48,6 @@ app.post('/api/zerar-caixa', (req, res) => {
     });
 });
 
-// MANTÉM O SUPORTE PARA OS SEUS BOTÕES AZUIS DE TESTE FUNCIONAREM TAMBÉM
 app.post('/api/simular-pix', async (req, res) => {
     const { valor } = req.body;
     console.log("[PAINEL TESTE] Recebido clique manual de R\$ " + valor);
@@ -65,33 +64,28 @@ app.post('/api/simular-pix', async (req, res) => {
     }
 });
 
-// WEBHOOK PROFISSIONAL: TRATA A NOTIFICAÇÃO REAL DO MERCADO PAGO
 app.post('/webhook', async (req, res) => {
-    // Responde 200 imediatamente para o Mercado Pago não travar a fila
     res.sendStatus(200); 
 
     const { action, type, data } = req.body;
-    console.log(`[WEBHOOK] Notificação recebida do banco. Tipo: ${type || req.body.topic}, Ação: ${action}`);
+    console.log(`[WEBHOOK] Notificacao recebida do banco. Tipo: ${type || req.body.topic}, Acao: ${action}`);
 
-    // Identifica se a notificação é de um pagamento criado ou aprovado
     if (type === 'payment' || action === 'payment.created' || req.body.topic === 'payment') {
         const idPagamento = data && data.id ? data.id : req.body.id;
         
         if (!idPagamento) {
-            console.log("-> ID do pagamento não encontrado na mensagem.");
+            console.log("-> ID do pagamento nao encontrado na mensagem.");
             return;
         }
 
         console.log("-> ID do Pix detectado: " + idPagamento + ". Consultando valores no Mercado Pago...");
 
         try {
-            // Consulta os detalhes reais do pagamento direto na API do Mercado Pago
             const urlConsulta = `https://mercadopago.com{idPagamento}`;
             const respostaMP = await axios.get(urlConsulta, {
                 headers: { 'Authorization': `Bearer ${MP_ACCESS_TOKEN}` }
             });
 
-            // Verifica se o Pix foi aprovado de verdade pelo banco
             if (respostaMP.data && respostaMP.data.status === 'approved') {
                 const valorPixReal = parseFloat(respostaMP.data.transaction_amount);
                 const pulsosParaEnviar = obterQuantidadePulsos(valorPixReal);
@@ -100,16 +94,14 @@ app.post('/webhook', async (req, res) => {
 
                 if (pulsosParaEnviar > 0) {
                     db.update({ maquina: MAQUINA_ID }, { \$inc: { totalAcumulado: valorPixReal } }, { upsert: true });
-                    console.log("-> Despachando " + pulsosParaEnviar + " créditos para a Box...");
-                    
-                    // Envia o valor total de uma vez só para a placa ESP32 estalar com precisão
+                    console.log("-> Despachando " + pulsosParaEnviar + " creditos para a Box...");
                     await enviarSinalBlynk("V1", pulsosParaEnviar);
-                    console.log("=== Créditos entregues na Jukebox! ===\n");
+                    console.log("=== Creditos entregues na Jukebox! ===\n");
                 } else {
-                    console.log("-> O valor recebido não atinge o mínimo para gerar créditos.");
+                    console.log("-> O valor recebido nao atinge o minimo para gerar creditos.");
                 }
             } else {
-                console.log("-> Status do pagamento ainda não está aprovado: " + (respostaMP.data ? respostaMP.data.status : 'desconhecido'));
+                console.log("-> Status do pagamento ainda nao esta aprovado.");
             }
         } catch (erro) {
             console.log("-> Erro ao consultar pagamento no Mercado Pago:", erro.message);
@@ -118,6 +110,6 @@ app.post('/webhook', async (req, res) => {
 });
 
 app.listen(3000, async () => {
-    console.log('Servidor Jukebox de Produção Ativo na porta 3000!');
+    console.log('Servidor Jukebox de Producao Ativo na porta 3000!');
     await inicializarLuzesStatus();
 });
