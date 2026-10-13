@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Jukebox</title>
+    <style>
+        body { font-family: Arial, sans-serif; background-color: #f0f2f5; margin: 0; padding: 40px; display: flex; flex-direction: column; align-items: center; }
+        .container { background-color: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); text-align: center; max-width: 500px; width: 100%; }
+        h1 { color: #1e40af; margin-bottom: 10px; font-size: 24px; }
+        .saldo-box { background-color: #ecfdf5; border: 2px solid #10b981; border-radius: 8px; padding: 15px; margin: 20px 0; }
+        .saldo-titulo { font-size: 14px; color: #047857; text-transform: uppercase; font-weight: bold; }
+        .saldo-valor { font-size: 32px; font-weight: bold; color: #065f46; margin-top: 5px; }
+        .grid-botoes { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; margin-top: 25px; }
+        .btn-credito { background-color: #2563eb; color: white; border: none; padding: 15px; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-credito:hover { background-color: #1d4ed8; transform: scale(1.03); }
+        .btn-credito.full { grid-column: span 2; background-color: #1d4ed8; }
+        .btn-credito.full:hover { background-color: #1e40af; }
+        .btn-zerar { background-color: #ef4444; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 25px; font-size: 14px; }
+        .btn-zerar:hover { background-color: #dc2626; }
+        .log-msg { margin-top: 20px; font-size: 14px; color: #4b5563; min-height: 20px; font-style: italic; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Painel de Teste Independente</h1>
+        <div class="saldo-box">
+            <div class="saldo-titulo">Faturamento Bruto Acumulado</div>
+            <div class="saldo-valor" id="txt-saldo">R$ 0,00</div>
+        </div>
+        <h3>Clique em um valor para disparar os pulsos:</h3>
+        <div class="grid-botoes">
+            <button class="btn-credito" onclick="testarPulso(2.00)">R$ 2,00 (2 Pulsos)</button>
+            <button class="btn-credito" onclick="testarPulso(5.00)">R$ 5,00 (5 Pulsos)</button>
+            <button class="btn-credito" onclick="testarPulso(10.00)">R$ 10,00 (10 Pulsos)</button>
+            <button class="btn-credito" onclick="testarPulso(20.00)">R$ 20,00 (20 Pulsos)</button>
+            <button class="btn-credito full" onclick="testarPulso(50.00)">R$ 50,00 (50 Pulsos)</button>
+        </div>
+        <div class="log-msg" id="txt-log">Aguardando comando...</div>
+        <button class="btn-zerar" onclick="zerarRelatorio()">Zerar Contador</button>
+    </div>
+
+    <script>
+        // Código limpo sem crases confusas
+        async function atualizarSaldoNaTela() {
+            try {
+                const resposta = await fetch("http://localhost:3000/api/faturamento");
+                const dados = await resposta.json();
+                document.getElementById('txt-saldo').innerText = "R$ " + dados.totalAcumulado.toFixed(2);
+            } catch (erro) {
+                console.error(erro);
+            }
+        }
+
+        async function testarPulso(valorDefinido) {
+            document.getElementById('txt-log').innerText = "Enviando sinal...";
+            try {
+                const resposta = await fetch("http://localhost:3000/api/simular-pix", {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ valor: valorDefinido })
+                });
+                const resultado = await resposta.json();
+                if (resultado.success) {
+                    document.getElementById('txt-log').innerText = "Sucesso! Sinais enviados.";
+                    setTimeout(atualizarSaldoNaTela, 1500);
+                }
+            } catch (erro) {
+                document.getElementById('txt-log').innerText = "Erro na comunicação.";
+            }
+        }
+
+        async function zerarRelatorio() {
+            if (confirm("Deseja zerar o faturamento?")) {
+                try {
+                    await fetch("http://localhost:3000/api/zerar-caixa", { method: 'POST' });
+                    atualizarSaldoNaTela();
+                } catch (erro) {
+                    alert("Erro ao zerar.");
+                }
+            }
+        }
+        atualizarSaldoNaTela();
+    </script>
+</body>
+</html>
