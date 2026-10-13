@@ -71,8 +71,8 @@ app.post('/webhook', async (req, res) => {
                     const urlParte2 = "/external/api/update?token=";
                     const tkn = "ASLzBlIjoi4Q2Vo-HVD-LiuYj1Msr4gM";
                     
-                    const linkLiga = urlParte1 + urlParte2 + tkn + "&V1=1";
-                    const linkDesliga = urlParte1 + urlParte2 + tkn + "&V1=0";
+                    const linkLiga = urlParte1 + urlParte2 + tkn + "&D23=1";
+                    const linkDesliga = urlParte1 + urlParte2 + tkn + "&D23=0";
 
                     // 1. Liga o relé e espera meio segundo ligado
                     await axios.get(linkLiga).catch(()=>{});
