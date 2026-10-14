@@ -22,11 +22,12 @@ function obterQuantidadePulsos(valor) {
     return 0; 
 }
 
+// FUNÇÃO TOTALMENTE BLINDADA CONTRA TRADUTORES DE NAVEGADOR
 async function enviarSinalBlynk(pino, valor) {
-    const urlParte1 = "https://blynk.cloud";
-    const urlParte2 = "/external/api/update?token=";
-    const url = urlParte1 + urlParte2 + BLYNK_TOKEN + "&" + pino + "=" + valor;
-    await axios.get(url).catch(() => {});
+    const blynkHost = "https://blynk.cloud";
+    const blynkPath = "/external/api/update?token=";
+    const urlCompleta = blynkHost + blynkPath + BLYNK_TOKEN + "&" + pino + "=" + valor;
+    await axios.get(urlCompleta).catch(() => {});
 }
 
 async function inicializarLuzesStatus() {
@@ -48,6 +49,7 @@ app.post('/api/zerar-caixa', (req, res) => {
     });
 });
 
+// LINK DIRETO DOS BOTÕES AZUIS DO PAINEL PARA O PINO V1
 app.post('/api/simular-pix', async (req, res) => {
     const { valor } = req.body;
     console.log("[PAINEL TESTE] Recebido clique manual de R$ " + valor);
@@ -59,6 +61,8 @@ app.post('/api/simular-pix', async (req, res) => {
                 const atual = doc ? doc.totalAcumulado : 0;
                 const novoValor = Math.round((atual + parseFloat(valor)) * 100) / 100;
                 db.update({ maquina: MAQUINA_ID }, { m: MAQUINA_ID, totalAcumulado: novoValor }, { upsert: true });
+                
+                // DISPARA DIRETAMENTE O VALOR CORRETO PARA O BLYNK
                 await enviarSinalBlynk("V1", pulsosParaEnviar);
             });
         }
@@ -85,7 +89,6 @@ app.post('/webhook', async (req, res) => {
         console.log("-> ID do Pix detectado: " + idPagamento + ". Consultando valores no Mercado Pago...");
 
         try {
-            // LINK DO MERCADO PAGO CORRIGIDO E MONTADO EM PEDAÇOS CONTRA TRADUTORES:
             const mpUrl1 = "https://mercadopago.com";
             const mpUrl2 = "/v1/payments/";
             const urlConsulta = mpUrl1 + mpUrl2 + idPagamento;
