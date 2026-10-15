@@ -22,9 +22,10 @@ function obterQuantidadePulsos(valor) {
     return 0; 
 }
 
-async function enviarSinalBlynk(pino, valor) {
+// FUNÇÃO ATUALIZADA: RETIROU O "AWAIT" PARA ENVIAR SINAL IGUAL A UM TIRO SEM TRAVAR O CÓDIGO
+function enviarSinalBlynk(pino, valor) {
     const url = "https://blynk.cloud" + BLYNK_TOKEN + "&" + pino + "=" + valor;
-    await axios.get(url).catch(() => {});
+    axios.get(url).catch(() => {});
 }
 
 app.get('/api/faturamento', (req, res) => {
@@ -45,18 +46,18 @@ app.post('/api/simular-pix', async (req, res) => {
     
     try {
         const pulsosParaEnviar = obterQuantidadePulsos(parseFloat(valor));
-        res.json({ success: true }); // Responde rápido o painel
+        res.json({ success: true }); 
 
         if (pulsosParaEnviar > 0) {
             db.update({ maquina: MAQUINA_ID }, { $inc: { totalAcumulado: parseFloat(valor) } }, { upsert: true });
             
-            // RODA O RITMO DE PULSOS CORTADOS IGUAL ONTEM (EVITA DAR 100 PULSOS)
+            // DISPARA OS PULSOS SEGUIDOS SEM TRAVAR O SERVIDOR NO MEIO
             for (let i = 1; i <= pulsosParaEnviar; i++) {
-                console.log("Soltando pulso " + i + " de " + pulsosParaEnviar);
-                await enviarSinalBlynk("V1", "1");
-                await new Promise(r => setTimeout(r, 400));
-                await enviarSinalBlynk("V1", "0");
-                await new Promise(r => setTimeout(r, 400));
+                console.log("-> Disparando pulso " + i + " de " + pulsosParaEnviar);
+                enviarSinalBlynk("V1", "1");
+                await new Promise(r => setTimeout(r, 350));
+                enviarSinalBlynk("V1", "0");
+                await new Promise(r => setTimeout(r, 350));
             }
         }
     } catch (erro) {
@@ -86,10 +87,10 @@ app.post('/webhook', async (req, res) => {
                     db.update({ maquina: MAQUINA_ID }, { $inc: { totalAcumulado: valorPixReal } }, { upsert: true });
                     
                     for (let i = 1; i <= pulsosParaEnviar; i++) {
-                        await enviarSinalBlynk("V1", "1");
-                        await new Promise(r => setTimeout(r, 400));
-                        await enviarSinalBlynk("V1", "0");
-                        await new Promise(r => setTimeout(r, 400));
+                        enviarSinalBlynk("V1", "1");
+                        await new Promise(r => setTimeout(r, 350));
+                        enviarSinalBlynk("V1", "0");
+                        await new Promise(r => setTimeout(r, 350));
                     }
                 }
             }
