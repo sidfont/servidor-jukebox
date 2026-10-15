@@ -6,7 +6,7 @@ const Datastore = require('nedb');
 const app = express();
 app.use(express.json());
 app.use(cors());
-
+app.use(express.static('public'));
 // Banco de dados único que gerencia todas as caixas
 const db = new Datastore({ filename: 'faturamento_geral.db', autoload: true });
 
