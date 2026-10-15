@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login — Jukebox Pix</title>
+    <link rel="stylesheet" href="estilo.css">
+</head>
+<body class="login-body">
+    <div class="login-container">
+        <h1>🎵 Jukebox Pix</h1>
+        <p class="subtitulo">Painel de Controle</p>
+        
+        <form id="formLogin">
+            <input type="password" id="senha" placeholder="Digite sua senha" required>
+            <button type="submit">Entrar</button>
+        </form>
+        
+        <p id="mensagemErro" class="erro"></p>
+    </div>
+
+    <script>
+        const senhaCorreta = "jukebox2026"; // ✅ TROCA PELA SUA SENHA!
+        
+        document.getElementById('formLogin').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const senhaDigitada = document.getElementById('senha').value;
+            
+            if (senhaDigitada === senhaCorreta) {
+                localStorage.setItem('logado', 'sim');
+                window.location.href = 'painel.html';
+            } else {
+                document.getElementById('mensagemErro').textContent = '❌ Senha incorreta!';
+            }
+        });
+    </script>
+</body>
+</html>

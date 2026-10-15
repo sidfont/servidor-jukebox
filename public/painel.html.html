@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel — Jukebox Pix</title>
+    <link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+    <div class="cabecalho">
+        <h1>🎵 Meus Jukebox</h1>
+        <button onclick="sair()">Sair</button>
+    </div>
+
+    <div class="container">
+        <div class="resumo">
+            <div>Faturamento Hoje</div>
+            <div class="valor-total" id="valorTotal">R$ 0,00</div>
+        </div>
+
+        <h3 style="margin-bottom: 10px;">Máquinas</h3>
+        <div id="listaMaquinas">
+            <!-- Aqui vão aparecer suas máquinas -->
+            <p style="text-align:center; color:#888;">Carregando...</p>
+        </div>
+
+        <p class="ultima-atualizacao" id="ultimaAtualizacao">Atualizado agora</p>
+    </div>
+
+    <script>
+        // Verifica se está logado
+        if (localStorage.getItem('logado') !== 'sim') {
+            window.location.href = 'login.html';
+        }
+
+        function sair() {
+            localStorage.removeItem('logado');
+            window.location.href = 'login.html';
+        }
+
+        // Atualiza dados do painel
+        async function carregarDados() {
+            try {
+                const res = await fetch('/api/dados');
+                const dados = await res.json();
+               
+                
+                document.getElementById('valorTotal').textContent = 
+                    'R$ ' + dados.totalDia.toFixed(2).replace('.', ',');
+                
+                const lista = document.getElementById('listaMaquinas');
+                lista.innerHTML = '';
+                
+                dados.maquinas.forEach(mq => {
+                    lista.innerHTML += `
+                        <div class="maquina-card ${mq.online ? 'status-online' : 'status-offline'}">
+                            <div class="nome-maquina">
+                                ${mq.nome}
+                                <span class="bolinha ${mq.online ? 'verde' : 'vermelha'}"></span>
+                            </div>
+                            <div class="info">
+                                ${mq.online ? '✅ Online' : '❌ Offline'}<br>
+                                Último pagamento: ${mq.ultimoPagamento || '---'}<br>
+                                Hoje: R$ ${mq.valorDia.toFixed(2).replace('.', ',')}
+                            </div>
+                            ${mq.online ? `<button class="btn-pulso" onclick="enviarPulso('${mq.id}', 2)">⚡ +2 Pulsos</button>` : ''}
+                        </div>
+                    `;
+                });
+                
+                document.getElementById('ultimaAtualizacao').textContent = 
+                    'Última atualização: ' + new Date().toLocaleTimeString('pt-BR');
+                    
+            } catch (erro) {
+                console.log('Servidor offline');
+            }
+        }
+
+        async function enviarPulso(id, qtd) {
+            if(confirm(`Disparar ${qtd} pulsos?`)) {
+                await fetch('/api/pulso', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ id, pulsos: qtd })
+                });
+                alert('✅ Comando enviado!');
+            }
+        }
+
+        carregarDados();
+        setInterval(carregarDados, 5000); // Atualiza a cada 5 segundos
+    </script>
+</body>
+</html>
