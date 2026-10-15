@@ -5,139 +5,31 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jukebox Pix - Controle</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: Arial, sans-serif;
-        }
-        body {
-            background: linear-gradient(135deg, #1a1a2e, #16213e);
-            color: white;
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .container {
-            max-width: 900px;
-            margin: 0 auto;
-        }
-        h1 {
-            text-align: center;
-            margin-bottom: 30px;
-            color: #00d4ff;
-        }
-        .maquina-selector {
-            background: rgba(255,255,255,0.1);
-            padding: 20px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        select {
-            padding: 10px 20px;
-            font-size: 18px;
-            border-radius: 5px;
-            border: none;
-            background: #00d4ff;
-            color: #000;
-            font-weight: bold;
-        }
-        .status-box {
-            font-size: 20px;
-            font-weight: bold;
-        }
-        .status-offline {
-            color: #ff6b6b;
-        }
-        .status-online {
-            color: #4ecdc4;
-        }
-        .cards {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 30px;
-        }
-        .card {
-            background: rgba(255,255,255,0.1);
-            padding: 25px;
-            border-radius: 10px;
-            text-align: center;
-        }
-        .card h3 {
-            font-size: 16px;
-            margin-bottom: 10px;
-            color: #aaa;
-        }
-        .card .valor {
-            font-size: 32px;
-            font-weight: bold;
-        }
-        .faturamento {
-            color: #00d4ff;
-        }
-        .comissao {
-            color: #4ecdc4;
-        }
-        .botoes {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-bottom: 30px;
-        }
-        .btn {
-            padding: 20px;
-            font-size: 18px;
-            font-weight: bold;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            background: #00d4ff;
-            color: #000;
-            transition: transform 0.2s;
-        }
-        .btn:hover {
-            transform: scale(1.05);
-        }
-        .btn:last-child:nth-child(odd) {
-            grid-column: span 2;
-        }
-        .monitor {
-            background: rgba(0,0,0,0.3);
-            padding: 20px;
-            border-radius: 10px;
-        }
-        .monitor h3 {
-            margin-bottom: 15px;
-            color: #aaa;
-        }
-        .log-item {
-            padding: 8px 10px 8px 0;
-            border-bottom: 1px solid #333;
-            font-family: monospace;
-            font-size: 14px;
-            position: relative;
-        }
-        .log-ok {
-            color: #4ecdc4;
-        }
-        .log-erro {
-            color: #ff6b6b;
-        }
-        .log-envio {
-            color: #ffd166;
-        }
-        .btn-zera {
-            margin-top: 15px;
-            padding: 10px 20px;
-            background: #ff6b6b;
-            color: white;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+        body { background: #1a1a2e; color: white; min-height: 100vh; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        h1 { text-align: center; margin-bottom: 25px; color: #00d4ff; }
+        .maquina-selector { background: rgba(255,255,255,0.08); padding: 18px; border-radius: 8px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        select { padding: 8px 16px; font-size: 16px; border-radius: 4px; border: none; background: #00d4ff; color: #000; font-weight: bold; }
+        .status-box { font-size: 18px; font-weight: bold; }
+        .status-offline { color: #ff6b6b; }
+        .status-online { color: #4ecdc4; }
+        .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
+        .card { background: rgba(255,255,255,0.08); padding: 20px; border-radius: 8px; text-align: center; }
+        .card h3 { font-size: 14px; margin-bottom: 8px; color: #aaa; }
+        .card .valor { font-size: 28px; font-weight: bold; }
+        .faturamento { color: #00d4ff; }
+        .comissao { color: #4ecdc4; }
+        .botoes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 25px; }
+        .btn { padding: 18px; font-size: 16px; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; background: #00d4ff; color: #000; }
+        .btn:nth-child(5) { grid-column: span 2; }
+        .monitor { background: rgba(0,0,0,0.25); padding: 18px; border-radius: 8px; }
+        .monitor h3 { margin-bottom: 12px; color: #aaa; font-size: 15px; }
+        .log-item { padding: 6px 0; border-bottom: 1px solid #2a2a4a; font-family: monospace; font-size: 13px; }
+        .log-ok { color: #4ecdc4; }
+        .log-erro { color: #ff6b6b; }
+        .log-envio { color: #ffd166; }
+        .btn-zera { margin-top: 12px; padding: 8px 16px; background: #ff6b6b; color: white; border: none; border-radius: 4px; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -167,7 +59,7 @@
             </div>
         </div>
 
-        <h3 style="margin-bottom:15px">SIMULADOR DE CARGA MANUAL:</h3>
+        <h3 style="margin-bottom:12px; font-size:15px;">SIMULADOR DE CARGA MANUAL:</h3>
         <div class="botoes">
             <button class="btn" onclick="enviarPulso(2)">R$ 2,00 (2 Pulsos)</button>
             <button class="btn" onclick="enviarPulso(5)">R$ 5,00 (5 Pulsos)</button>
@@ -179,40 +71,52 @@
         <div class="monitor">
             <h3>MONITOR DE ENTRADAS PIX / PULSOS</h3>
             <div id="log"></div>
-            <button class="btn-zera" onclick="zerarCaixa()">🔄 Zerar Caixa de Box-01</button>
+            <button class="btn-zera" onclick="zerarCaixa()">🔄 Zerar Caixa</button>
         </div>
     </div>
 
 <script>
-// ========== CONEXÃO WEBSOCKET ==========
 let ws;
-let faturamento = 0;
+let maquinaAtual = 'Box-01';
+let dadosServidor = {};
 
 function conectar() {
-    const url = window.location.href.replace('http://', 'wss://').replace('https://', 'wss://').replace('/index.html', '/').replace('/', '/ws');
     ws = new WebSocket('wss://servidor-jukebox.onrender.com/');
     
     ws.onopen = function() {
-        console.log('✅ Painel conectado ao servidor');
         atualizarStatus('online');
-        adicionarLog('✅ Conectado ao servidor', 'log-ok');
+        adicionarLog('✅ Conectado ao servidor — dados salvos na nuvem', 'log-ok');
     };
     
     ws.onmessage = function(event) {
-        console.log('📩 Recebido:', event.data);
         const msg = event.data;
         
-        if (msg.includes('conectado:Box-01') || msg.includes('status:Box-01:online')) {
-            atualizarStatus('online');
-            adicionarLog('✅ Box-01 está ONLINE', 'log-ok');
-        }
-        
-        if (msg.includes('status:Box-01:offline') || msg.includes('Caixinha desconectou')) {
-            atualizarStatus('offline');
-        }
-        
-        if (msg.includes('R$') || msg.includes('pulso') || msg.includes('carga')) {
-            adicionarLog('📩 ' + msg, 'log-ok');
+        try {
+            const dados = JSON.parse(msg);
+            
+            if (dados.tipo === 'dados') {
+                dadosServidor = dados.maquinas || {};
+                atualizarTela();
+            }
+            
+            if (dados.tipo === 'atualizacao' && dados.nome === maquinaAtual) {
+                if (!dadosServidor[dados.nome]) dadosServidor[dados.nome] = {};
+                dadosServidor[dados.nome].faturamento = dados.valor;
+                atualizarTela();
+                adicionarLog(`💰 ${dados.nome}: R$ ${dados.valor.toFixed(2).replace('.', ',')}`, 'log-ok');
+            }
+            
+            if (dados.tipo === 'zerar' && dados.nome === maquinaAtual) {
+                if (dadosServidor[dados.nome]) dadosServidor[dados.nome].faturamento = 0;
+                atualizarTela();
+                adicionarLog('🔄 Caixa zerada no servidor', 'log-ok');
+            }
+            
+        } catch(e) {
+            if (msg.includes('conectado:Box-01') || msg.includes('status:Box-01:online')) {
+                atualizarStatus('online');
+                adicionarLog('✅ Box-01 está ONLINE', 'log-ok');
+            }
         }
     };
     
@@ -221,10 +125,12 @@ function conectar() {
         adicionarLog('❌ Desconectado — tentando reconectar...', 'log-erro');
         setTimeout(conectar, 3000);
     };
-    
-    ws.onerror = function() {
-        atualizarStatus('offline');
-    };
+}
+
+function atualizarTela() {
+    const valor = dadosServidor[maquinaAtual]?.faturamento || 0;
+    document.getElementById('faturamento').textContent = 'R$ ' + valor.toFixed(2).replace('.', ',');
+    document.getElementById('comissao').textContent = 'R$ ' + (valor * 0.5).toFixed(2).replace('.', ',');
 }
 
 function atualizarStatus(estado) {
@@ -245,31 +151,28 @@ function adicionarLog(texto, classe) {
 
 function enviarPulso(valor) {
     if (ws && ws.readyState === WebSocket.OPEN) {
-        const msg = `pulso:${valor}`;
-        ws.send(msg);
+        ws.send(`adicionar:${maquinaAtual}:${valor}`);
+        ws.send(`pulso:${valor}`); // Avisa a caixinha pra dar o crédito
         adicionarLog(`➡️ Enviado: R$ ${valor},00`, 'log-envio');
-        
-        faturamento += valor;
-        document.getElementById('faturamento').textContent = `R$ ${faturamento.toFixed(2).replace('.', ',')}`;
-        document.getElementById('comissao').textContent = `R$ ${(faturamento * 0.5).toFixed(2).replace('.', ',')}`;
     } else {
         adicionarLog('❌ Sem conexão com o servidor', 'log-erro');
     }
 }
 
 function zerarCaixa() {
-    if (confirm('Tem certeza que deseja zerar o caixa?')) {
-        faturamento = 0;
-        document.getElementById('faturamento').textContent = 'R$ 0,00';
-        document.getElementById('comissao').textContent = 'R$ 0,00';
-        adicionarLog('🔄 Caixa zerada', 'log-ok');
+    if (confirm('Tem certeza? Isso zera o caixa para sempre no servidor!')) {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(`zerar:${maquinaAtual}`);
+        }
     }
 }
 
-// Inicia quando a página carregar
-window.onload = function() {
-    conectar();
-};
+document.getElementById('maquina').addEventListener('change', function() {
+    maquinaAtual = this.value;
+    atualizarTela();
+});
+
+window.onload = conectar;
 </script>
 </body>
 </html>
