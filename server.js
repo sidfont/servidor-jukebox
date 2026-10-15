@@ -5,11 +5,16 @@ const Datastore = require('nedb');
 
 const app = express();
 app.use(express.json());
-app.use(cors());
+
+// CONFIGURAÇÃO DE CORS PROFISSIONAL PARA DESTRAVAR O SEU NAVEGADOR
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 const db = new Datastore({ filename: 'faturamento.db', autoload: true });
 
-// CONFIGURAÇÃO OFICIAL DA SUA PRIMEIRA MÁQUINA DE RUA
 const MAQUINA_ID = "Box-01"; 
 const BLYNK_TOKEN = "ASLzBlIjoi4Q2Vo-HVD-LiuYj1Msr4gM"; 
 const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN;
@@ -56,7 +61,6 @@ app.post('/api/simular-pix', async (req, res) => {
         if (pulsosParaEnviar > 0) {
             db.update({ maquina: MAQUINA_ID }, { $inc: { totalAcumulado: parseFloat(valor) } }, { upsert: true });
             
-            // RITMO TRADICIONAL ROBUSTO: LIGA E DESLIGA O PINO V1
             for (let i = 1; i <= pulsosParaEnviar; i++) {
                 console.log("Soltando pulso manual " + i + " de " + pulsosParaEnviar);
                 await enviarSinalBlynk("V1", "1");
@@ -90,24 +94,18 @@ app.post('/webhook', async (req, res) => {
                 const valorPixReal = parseFloat(respostaMP.data.transaction_amount);
                 const pulsosParaEnviar = obterQuantidadePulsos(valorPixReal);
 
-                console.log("\n=== PIX REAL APROVADO: R$ " + valorPixReal.toFixed(2) + " ===");
-
                 if (pulsosParaEnviar > 0) {
                     db.update({ maquina: MAQUINA_ID }, { $inc: { totalAcumulado: valorPixReal } }, { upsert: true });
                     
-                    console.log("-> Despachando " + pulsosParaEnviar + " creditos para a Box-01...");
                     for (let i = 1; i <= pulsosParaEnviar; i++) {
                         await enviarSinalBlynk("V1", "1");
                         await new Promise(r => setTimeout(r, 450));
                         await enviarSinalBlynk("V1", "0");
                         await new Promise(r => setTimeout(r, 450));
                     }
-                    console.log("=== Creditos entregues na Jukebox! ===\n");
                 }
             }
-        } catch (erro) {
-            console.log("-> Erro na consulta do Mercado Pago:", erro.message);
-        }
+        } catch (erro) {}
     }
 });
 
