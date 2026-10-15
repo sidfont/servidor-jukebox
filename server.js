@@ -5,13 +5,7 @@ const Datastore = require('nedb');
 
 const app = express();
 app.use(express.json());
-
-// CONFIGURAÇÃO DE CORS PROFISSIONAL PARA DESTRAVAR O SEU NAVEGADOR
-app.use(cors({
-    origin: '*',
-    methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(cors());
 
 const db = new Datastore({ filename: 'faturamento.db', autoload: true });
 
@@ -33,13 +27,6 @@ async function enviarSinalBlynk(pino, valor) {
     await axios.get(url).catch(() => {});
 }
 
-async function inicializarLuzesStatus() {
-    console.log("-> Sincronizando LEDs de status da Box-01...");
-    await enviarSinalBlynk("V26", "1"); // Verde Online LIGA
-    await enviarSinalBlynk("V27", "0"); // Azul Offline DESLIGA
-    await enviarSinalBlynk("V25", "0"); // Vermelho Pulso DESLIGA
-}
-
 app.get('/api/faturamento', (req, res) => {
     db.findOne({ maquina: MAQUINA_ID }, (err, doc) => {
         res.json({ maquina: MAQUINA_ID, totalAcumulado: doc ? doc.totalAcumulado : 0 });
@@ -58,27 +45,28 @@ app.post('/api/simular-pix', async (req, res) => {
     
     try {
         const pulsosParaEnviar = obterQuantidadePulsos(parseFloat(valor));
+        res.json({ success: true }); // Responde rápido o painel
+
         if (pulsosParaEnviar > 0) {
             db.update({ maquina: MAQUINA_ID }, { $inc: { totalAcumulado: parseFloat(valor) } }, { upsert: true });
             
+            // RODA O RITMO DE PULSOS CORTADOS IGUAL ONTEM (EVITA DAR 100 PULSOS)
             for (let i = 1; i <= pulsosParaEnviar; i++) {
-                console.log("Soltando pulso manual " + i + " de " + pulsosParaEnviar);
+                console.log("Soltando pulso " + i + " de " + pulsosParaEnviar);
                 await enviarSinalBlynk("V1", "1");
-                await new Promise(r => setTimeout(r, 450));
+                await new Promise(r => setTimeout(r, 400));
                 await enviarSinalBlynk("V1", "0");
-                await new Promise(r => setTimeout(r, 450));
+                await new Promise(r => setTimeout(r, 400));
             }
         }
-        res.json({ success: true });
     } catch (erro) {
-        res.status(500).json({ success: false });
+        console.log("Erro no laco de pulsos:", erro.message);
     }
 });
 
 app.post('/webhook', async (req, res) => {
     res.sendStatus(200); 
     const { action, type, data } = req.body;
-    console.log("[WEBHOOK] Notificacao de Pix recebida do Mercado Pago.");
 
     if (type === 'payment' || action === 'payment.created') {
         const idPagamento = data && data.id ? data.id : req.body.id;
@@ -99,9 +87,9 @@ app.post('/webhook', async (req, res) => {
                     
                     for (let i = 1; i <= pulsosParaEnviar; i++) {
                         await enviarSinalBlynk("V1", "1");
-                        await new Promise(r => setTimeout(r, 450));
+                        await new Promise(r => setTimeout(r, 400));
                         await enviarSinalBlynk("V1", "0");
-                        await new Promise(r => setTimeout(r, 450));
+                        await new Promise(r => setTimeout(r, 400));
                     }
                 }
             }
@@ -109,9 +97,6 @@ app.post('/webhook', async (req, res) => {
     }
 });
 
-app.use((req, res) => { res.status(404).send("Rota nao encontrada"); });
-
-app.listen(3000, async () => {
+app.listen(3000, () => {
     console.log('Servidor da Box-01 Ativo em Producao!');
-    await inicializarLuzesStatus();
 });
