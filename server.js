@@ -25,6 +25,13 @@ wss.on('connection', (ws) => {
   ws.on('message', (mensagem) => {
     const texto = mensagem.toString();
     console.log('📩 Recebido:', texto);
+    
+    // Reenvia para o painel da web
+    wss.clients.forEach((cliente) => {
+      if (cliente !== ws && cliente.readyState === WebSocket.OPEN) {
+        cliente.send(texto);
+      }
+    });
   });
   
   ws.on('close', () => {
