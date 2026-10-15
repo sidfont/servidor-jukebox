@@ -3,324 +3,273 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Painel Central Jukebox Brasil</title>
+    <title>Jukebox Pix - Controle</title>
     <style>
-        * { box-sizing: border-box; }
-        body { 
-            font-family: 'Segoe UI', Arial, sans-serif; 
-            background-color: #0f172a; 
-            margin: 0; 
-            padding: 20px; 
-            color: #f8fafc; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            min-height: 100vh; 
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
         }
-        .container { 
-            background-color: #1e293b; 
-            padding: 30px; 
-            border-radius: 16px; 
-            box-shadow: 0 10px 25px rgba(0,0,0,0.3); 
-            max-width: 650px; 
-            width: 100%; 
-            border: 1px solid #334155; 
+        body {
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: white;
+            min-height: 100vh;
+            padding: 20px;
         }
-        .logo-container { display: flex; justify-content: center; margin-bottom: 20px; }
-        .logo-img { width: 140px; height: 140px; border-radius: 50%; object-fit: cover; border: 3px solid #38bdf8; box-shadow: 0 0 15px rgba(56, 189, 248, 0.4); }
-        h1 { color: #38bdf8; margin: 0 0 5px 0; font-size: 26px; text-align: center; }
-        .sub { text-align: center; color: #94a3b8; margin: 0 0 20px 0; font-size: 14px; }
-        .seletor-box { 
-            background: #0f172a; 
-            padding: 12px; 
-            border-radius: 10px; 
-            border: 1px solid #334155; 
-            margin-bottom: 20px; 
-            display: flex; 
-            align-items: center; 
-            justify-content: space-between; 
-            flex-wrap: wrap;
-            gap: 10px;
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
         }
-        .seletor-box label { font-weight: bold; color: #94a3b8; font-size: 14px; }
-        .select-maquina { 
-            background: #1e293b; 
-            color: white; 
-            border: 1px solid #475569; 
-            padding: 8px 15px; 
-            border-radius: 6px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            font-size: 14px; 
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            color: #00d4ff;
         }
-        .status-bar { 
-            display: flex; 
-            justify-content: space-between; 
-            flex-wrap: wrap;
-            gap: 10px;
-            background: #0f172a; 
-            padding: 12px 20px; 
-            border-radius: 10px; 
-            border: 1px solid #334155; 
-            margin-bottom: 20px; 
+        .maquina-selector {
+            background: rgba(255,255,255,0.1);
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        .status-item { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: bold; }
-        .led { width: 12px; height: 12px; border-radius: 50%; background-color: #475569; transition: all 0.3s; }
-        .led.verde { background-color: #22c55e; box-shadow: 0 0 10px #22c55e; }
-        .led.vermelho { background-color: #ef4444; box-shadow: 0 0 10px #ef4444; }
-        .dashboard { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 25px; }
-        .card { background: #0f172a; padding: 15px; border-radius: 10px; border: 1px solid #334155; text-align: center; }
-        .card-title { font-size: 12px; color: #94a3b8; text-transform: uppercase; margin: 0 0 5px 0; font-weight: bold; }
-        .card-value { font-size: 24px; font-weight: bold; color: #38bdf8; margin: 0; }
-        .card-value.verde { color: #4ade80; }
-        .btn-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 25px; }
-        .btn-teste { 
-            background: #2563eb; 
-            color: white; 
-            border: none; 
-            padding: 14px; 
-            border-radius: 8px; 
-            font-size: 15px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            transition: all 0.2s; 
-            border-bottom: 3px solid #1d4ed8; 
+        select {
+            padding: 10px 20px;
+            font-size: 18px;
+            border-radius: 5px;
+            border: none;
+            background: #00d4ff;
+            color: #000;
+            font-weight: bold;
         }
-        .btn-teste:hover { background: #1d4ed8; }
-        .btn-teste:active { transform: translateY(2px); border-bottom: 1px solid #1d4ed8; }
-        .btn-teste.full { grid-column: span 2; background: #2563eb; border-bottom: 3px solid #1d4ed8; }
-        .history-box { background: #0f172a; border-radius: 10px; border: 1px solid #334155; padding: 15px; }
-        .history-title { 
-            font-size: 14px; 
-            color: #38bdf8; 
-            margin: 0 0 10px 0; 
-            font-weight: bold; 
-            display: flex; 
-            justify-content: space-between; 
-            flex-wrap: wrap;
-            gap: 8px;
+        .status-box {
+            font-size: 20px;
+            font-weight: bold;
         }
-        .history-list { 
-            max-height: 180px; 
-            overflow-y: auto; 
-            padding-right: 5px; 
-            list-style: none; 
-            margin: 0; 
-            padding: 0; 
-            font-family: monospace; 
-            font-size: 13px; 
+        .status-offline {
+            color: #ff6b6b;
         }
-        .history-item { 
-            padding: 8px; 
-            border-bottom: 1px solid #1e293b; 
-            display: flex; 
-            justify-content: space-between; 
-            align-items: center; 
-            flex-wrap: wrap;
-            gap: 8px;
+        .status-online {
+            color: #4ecdc4;
         }
-        .status-badge { 
-            padding: 2px 6px; 
-            border-radius: 4px; 
-            font-size: 11px; 
-            font-weight: bold; 
-            text-transform: uppercase; 
-            white-space: nowrap;
+        .cards {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 30px;
         }
-        .badge-sucesso { background: #065f46; color: #34d399; }
-        .badge-processo { background: #78350f; color: #fbbf24; }
-        .badge-erro { background: #7f1d1d; color: #fca5a5; }
-        .btn-zerar { 
-            background: none; 
-            border: 1px solid #ef4444; 
-            color: #ef4444; 
-            padding: 8px 16px; 
-            border-radius: 6px; 
-            font-size: 12px; 
-            font-weight: bold; 
-            cursor: pointer; 
-            transition: all 0.2s; 
-            margin-top: 15px; 
-            width: 100%; 
+        .card {
+            background: rgba(255,255,255,0.1);
+            padding: 25px;
+            border-radius: 10px;
+            text-align: center;
         }
-        .btn-zerar:hover { background: #ef4444; color: white; }
-        .msg-sucesso { color: #4ade80; text-align: center; margin-top: 10px; font-weight: bold; }
-        .msg-erro { color: #f87171; text-align: center; margin-top: 10px; font-weight: bold; }
+        .card h3 {
+            font-size: 16px;
+            margin-bottom: 10px;
+            color: #aaa;
+        }
+        .card .valor {
+            font-size: 32px;
+            font-weight: bold;
+        }
+        .faturamento {
+            color: #00d4ff;
+        }
+        .comissao {
+            color: #4ecdc4;
+        }
+        .botoes {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .btn {
+            padding: 20px;
+            font-size: 18px;
+            font-weight: bold;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            background: #00d4ff;
+            color: #000;
+            transition: transform 0.2s;
+        }
+        .btn:hover {
+            transform: scale(1.05);
+        }
+        .btn:last-child:nth-child(odd) {
+            grid-column: span 2;
+        }
+        .monitor {
+            background: rgba(0,0,0,0.3);
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .monitor h3 {
+            margin-bottom: 15px;
+            color: #aaa;
+        }
+        .log-item {
+            padding: 8px 10px 8px 0;
+            border-bottom: 1px solid #333;
+            font-family: monospace;
+            font-size: 14px;
+            position: relative;
+        }
+        .log-ok {
+            color: #4ecdc4;
+        }
+        .log-erro {
+            color: #ff6b6b;
+        }
+        .log-envio {
+            color: #ffd166;
+        }
+        .btn-zera {
+            margin-top: 15px;
+            padding: 10px 20px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
     </style>
 </head>
 <body>
+    <div class="container">
+        <h1>🎰 Jukebox Pix</h1>
 
-<div class="container">
-    <div class="logo-container">
-        <img src="logo.png" alt="Jukebox Brasil" class="logo-img" onerror="this.style.display='none'">
-    </div>
+        <div class="maquina-selector">
+            <div>
+                <strong>Máquina:</strong> 
+                <select id="maquina">
+                    <option value="Box-01">Box-01 (Bancada Teste)</option>
+                </select>
+            </div>
+            <div class="status-box" id="status">
+                <span class="status-offline">● Sem conexão</span>
+            </div>
+        </div>
 
-    <h1>Painel de Controle Central</h1>
-    <p class="sub">Jukebox Brasil - Gerenciamento de Equipamentos de Rua</p>
-    
-    <div class="seletor-box">
-        <label>Selecione a Máquina:</label>
-        <select id="select-maquina" class="select-maquina" onchange="mudarDeMaquina()">
-            <option value="Box-01" selected>Box-01 (Bancada Teste)</option>
-            <option value="Box-02">Box-02 (Rua Ponto 2)</option>
-            <option value="Box-03">Box-03 (Rua Ponto 3)</option>
-        </select>
-    </div>
+        <div class="cards">
+            <div class="card">
+                <h3>FATURAMENTO BRUTO</h3>
+                <div class="valor faturamento" id="faturamento">R$ 0,00</div>
+            </div>
+            <div class="card">
+                <h3>SUA COMISSÃO (50%)</h3>
+                <div class="valor comissao" id="comissao">R$ 0,00</div>
+            </div>
+        </div>
 
-    <div class="status-bar">
-        <div class="status-item">Máquina: <span id="txt-maquina" style="color:#38bdf8;">Box-01</span></div>
-        <div class="status-item">
-            Status: <div id="led-status" class="led vermelho"></div>
-            <span id="lbl-status">Offline</span>
+        <h3 style="margin-bottom:15px">SIMULADOR DE CARGA MANUAL:</h3>
+        <div class="botoes">
+            <button class="btn" onclick="enviarPulso(2)">R$ 2,00 (2 Pulsos)</button>
+            <button class="btn" onclick="enviarPulso(5)">R$ 5,00 (5 Pulsos)</button>
+            <button class="btn" onclick="enviarPulso(10)">R$ 10,00 (10 Pulsos)</button>
+            <button class="btn" onclick="enviarPulso(20)">R$ 20,00 (20 Pulsos)</button>
+            <button class="btn" onclick="enviarPulso(50)">R$ 50,00 (50 Pulsos)</button>
+        </div>
+
+        <div class="monitor">
+            <h3>MONITOR DE ENTRADAS PIX / PULSOS</h3>
+            <div id="log"></div>
+            <button class="btn-zera" onclick="zerarCaixa()">🔄 Zerar Caixa de Box-01</button>
         </div>
     </div>
-    
-    <div class="dashboard">
-        <div class="card">
-            <p class="card-title">Faturamento Bruto</p>
-            <p class="card-value" id="val-bruto">R$ 0,00</p>
-        </div>
-        <div class="card">
-            <p class="card-title">Sua Comissão (50%)</p>
-            <p class="card-value verde" id="val-comissao">R$ 0,00</p>
-        </div>
-    </div>
-
-    <p style="color: #94a3b8; font-size: 14px; font-weight: bold; margin-bottom: 10px;">Simulador de Carga Manual:</p>
-    <div class="btn-grid">
-        <button class="btn-teste" onclick="enviarTeste(2)">R$ 2,00 (2 Pulsos)</button>
-        <button class="btn-teste" onclick="enviarTeste(5)">R$ 5,00 (5 Pulsos)</button>
-        <button class="btn-teste" onclick="enviarTeste(10)">R$ 10,00 (10 Pulsos)</button>
-        <button class="btn-teste" onclick="enviarTeste(20)">R$ 20,00 (20 Pulsos)</button>
-        <button class="btn-teste full" onclick="enviarTeste(50)">R$ 50,00 (50 Pulsos)</button>
-    </div>
-
-    <div id="mensagem"></div>
-
-    <div class="history-box">
-        <div class="history-title">
-            <span>Monitor de Entradas Pix / Pulsos</span>
-            <span style="color: #94a3b8; font-size: 11px;" id="txt-relogio">--:--:--</span>
-        </div>
-        <ul class="history-list" id="lista-historico">
-            <li class="history-item" id="item-vazio" style="color: #64748b;">Nenhum envio ainda.</li>
-        </ul>
-    </div>
-
-    <button class="btn-zerar" id="btn-zerar-texto" onclick="solicitarZerar()">Zerar Caixa da Box-01</button>
-</div>
 
 <script>
-    // ✅ SEU ENDEREÇO DO SERVIDOR — CONFERE SE ESTÁ CERTO!
-    const servidorUrl = "https://servidor-jukebox.onrender.com";
+// ========== CONEXÃO WEBSOCKET ==========
+let ws;
+let faturamento = 0;
+
+function conectar() {
+    const url = window.location.href.replace('http://', 'wss://').replace('https://', 'wss://').replace('/index.html', '/').replace('/', '/ws');
+    ws = new WebSocket('wss://servidor-jukebox.onrender.com/');
     
-    let maquinaSelecionada = "Box-01";
-    let ultimoTempoCarregamento = 0;
-
-    function obterHorario() {
-        return new Date().toLocaleTimeString('pt-BR');
-    }
-
-    function atualizarRelogio() {
-        document.getElementById('txt-relogio').innerText = obterHorario();
-    }
-    setInterval(atualizarRelogio, 1000);
-
-    function mudarDeMaquina() {
-        maquinaSelecionada = document.getElementById('select-maquina').value;
-        document.getElementById('txt-maquina').innerText = maquinaSelecionada;
-        document.getElementById('btn-zerar-texto').innerText = `Zerar Caixa da ${maquinaSelecionada}`;
+    ws.onopen = function() {
+        console.log('✅ Painel conectado ao servidor');
+        atualizarStatus('online');
+        adicionarLog('✅ Conectado ao servidor', 'log-ok');
+    };
+    
+    ws.onmessage = function(event) {
+        console.log('📩 Recebido:', event.data);
+        const msg = event.data;
         
-        const lista = document.getElementById('lista-historico');
-        lista.innerHTML = `<li class="history-item" id="item-vazio" style="color: #64748b;">Mudou para ${maquinaSelecionada}. Aguardando...</li>`;
-        
-        carregarDadosServidor();
-    }
-
-    function mostrarMensagem(texto, tipo) {
-        const div = document.getElementById('mensagem');
-        div.innerHTML = `<p class="msg-${tipo}">${texto}</p>`;
-        setTimeout(() => div.innerHTML = '', 4000);
-    }
-
-    function adicionarAoMonitor(valor, statusTexto, classeBadge) {
-        const lista = document.getElementById('lista-historico');
-        const itemVazio = document.getElementById('item-vazio');
-        if (itemVazio) itemVazio.remove();
-
-        const item = document.createElement('li');
-        item.className = 'history-item';
-        item.innerHTML = `
-            <div>[${obterHorario()}] ${maquinaSelecionada} → R$ ${valor.toFixed(2)}</div>
-            <span class="status-badge ${classeBadge}">${statusTexto}</span>
-        `;
-        lista.insertBefore(item, lista.firstChild);
-    }
-
-    async function carregarDadosServidor() {
-        try {
-            const resposta = await fetch(`${servidorUrl}/api/dados`);
-            
-            if (!resposta.ok) throw new Error('Servidor não respondeu');
-            
-            const dados = await resposta.json();
-            
-            const maq = dados.maquinas.find(m => m.id === maquinaSelecionada);
-            if (maq) {
-                document.getElementById('val-bruto').innerText = "R$ " + maq.valorDia.toFixed(2).replace('.', ',');
-                document.getElementById('val-comissao').innerText = "R$ " + (maq.valorDia / 2).toFixed(2).replace('.', ',');
-                document.getElementById('led-status').className = maq.online ? 'led verde' : 'led vermelho';
-                document.getElementById('lbl-status').innerText = maq.online ? 'Online' : 'Offline';
-            }
-        } catch (e) {
-            document.getElementById('led-status').className = 'led vermelho';
-            document.getElementById('lbl-status').innerText = 'Sem conexão';
-            console.error('Erro:', e);
+        if (msg.includes('conectado:Box-01') || msg.includes('status:Box-01:online')) {
+            atualizarStatus('online');
+            adicionarLog('✅ Box-01 está ONLINE', 'log-ok');
         }
-    }
-
-    async function enviarTeste(valorPix) {
-        try {
-            adicionarAoMonitor(valorPix, "Enviando...", "badge-processo");
-            
-            const pulsos = valorPix >= 50 ? 50 : 
-                           valorPix >= 20 ? 20 : 
-                           valorPix >= 10 ? 10 : 
-                           valorPix >= 5 ? 5 : 
-                           valorPix >= 2 ? 2 : 1;
-
-            const resposta = await fetch(`${servidorUrl}/api/pulso`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: maquinaSelecionada, pulsos: pulsos })
-            });
-
-            const resultado = await resposta.json();
-            
-            if (resultado.sucesso) {
-                adicionarAoMonitor(valorPix, "✅ Enviado", "badge-sucesso");
-                mostrarMensagem(`✅ ${pulsos} pulsos enviados para ${maquinaSelecionada}!`, 'sucesso');
-            } else {
-                adicionarAoMonitor(valorPix, "❌ Offline", "badge-erro");
-                mostrarMensagem("❌ Máquina offline — não enviado!", 'erro');
-            }
-        } catch (erro) {
-            adicionarAoMonitor(valorPix, "❌ Erro", "badge-erro");
-            mostrarMensagem("❌ Erro de conexão com o servidor!", 'erro');
-        }
-    }
-
-    async function solicitarZerar() {
-        if (!confirm(`Tem certeza que quer zerar a caixa de ${maquinaSelecionada}?`)) return;
         
-        mostrarMensagem(`Caixa de ${maquinaSelecionada} zerada!`, 'sucesso');
-        carregarDadosServidor();
-    }
+        if (msg.includes('status:Box-01:offline') || msg.includes('Caixinha desconectou')) {
+            atualizarStatus('offline');
+        }
+        
+        if (msg.includes('R$') || msg.includes('pulso') || msg.includes('carga')) {
+            adicionarLog('📩 ' + msg, 'log-ok');
+        }
+    };
+    
+    ws.onclose = function() {
+        atualizarStatus('offline');
+        adicionarLog('❌ Desconectado — tentando reconectar...', 'log-erro');
+        setTimeout(conectar, 3000);
+    };
+    
+    ws.onerror = function() {
+        atualizarStatus('offline');
+    };
+}
 
-    // Atualiza dados a cada 5 segundos
-    carregarDadosServidor();
-    setInterval(carregarDadosServidor, 5000);
+function atualizarStatus(estado) {
+    const el = document.getElementById('status');
+    if (estado === 'online') {
+        el.innerHTML = '<span class="status-online">● ONLINE</span>';
+    } else {
+        el.innerHTML = '<span class="status-offline">● Sem conexão</span>';
+    }
+}
+
+function adicionarLog(texto, classe) {
+    const log = document.getElementById('log');
+    const agora = new Date();
+    const horario = agora.toLocaleTimeString('pt-BR');
+    log.innerHTML = `<div class="log-item ${classe}">[${horario}] ${texto}</div>` + log.innerHTML;
+}
+
+function enviarPulso(valor) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        const msg = `pulso:${valor}`;
+        ws.send(msg);
+        adicionarLog(`➡️ Enviado: R$ ${valor},00`, 'log-envio');
+        
+        faturamento += valor;
+        document.getElementById('faturamento').textContent = `R$ ${faturamento.toFixed(2).replace('.', ',')}`;
+        document.getElementById('comissao').textContent = `R$ ${(faturamento * 0.5).toFixed(2).replace('.', ',')}`;
+    } else {
+        adicionarLog('❌ Sem conexão com o servidor', 'log-erro');
+    }
+}
+
+function zerarCaixa() {
+    if (confirm('Tem certeza que deseja zerar o caixa?')) {
+        faturamento = 0;
+        document.getElementById('faturamento').textContent = 'R$ 0,00';
+        document.getElementById('comissao').textContent = 'R$ 0,00';
+        adicionarLog('🔄 Caixa zerada', 'log-ok');
+    }
+}
+
+// Inicia quando a página carregar
+window.onload = function() {
+    conectar();
+};
 </script>
-
 </body>
 </html>
