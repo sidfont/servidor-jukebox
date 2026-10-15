@@ -5,16 +5,11 @@ const Datastore = require('nedb');
 
 const app = express();
 app.use(express.json());
-
-// PERMISSÃO TOTAL DE SEGURANÇA PARA DESTRAVAR O SEU NOTEBOOK
-app.use(cors({
-    origin: '*',
-    methods: ['GET', 'POST'],
-    allowedHeaders: ['Content-Type', 'Authorization']
-}));
+app.use(cors());
 
 const db = new Datastore({ filename: 'faturamento.db', autoload: true });
 
+// CONFIGURAÇÃO OFICIAL DA SUA PRIMEIRA MÁQUINA DE RUA
 const MAQUINA_ID = "Box-01"; 
 const BLYNK_TOKEN = "ASLzBlIjoi4Q2Vo-HVD-LiuYj1Msr4gM"; 
 const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN;
@@ -29,27 +24,25 @@ function obterQuantidadePulsos(valor) {
 }
 
 async function enviarSinalBlynk(pino, valor) {
-    const urlParte1 = "https://blynk.cloud";
-    const urlParte2 = "/external/api/update?token=";
-    const url = urlParte1 + urlParte2 + BLYNK_TOKEN + "&" + pino + "=" + valor;
+    const url = "https://blynk.cloud" + BLYNK_TOKEN + "&" + pino + "=" + valor;
     await axios.get(url).catch(() => {});
 }
 
 async function inicializarLuzesStatus() {
     console.log("-> Sincronizando LEDs de status da Box-01...");
-    await enviarSinalBlynk("V26", "1"); 
-    await enviarSinalBlynk("V27", "0"); 
-    await enviarSinalBlynk("V25", "0"); 
+    await enviarSinalBlynk("V26", "1"); // Verde Online LIGA
+    await enviarSinalBlynk("V27", "0"); // Azul Offline DESLIGA
+    await enviarSinalBlynk("V25", "0"); // Vermelho Pulso DESLIGA
 }
 
 app.get('/api/faturamento', (req, res) => {
-    db.findOne({ m: MAQUINA_ID }, (err, doc) => {
+    db.findOne({ maquina: MAQUINA_ID }, (err, doc) => {
         res.json({ maquina: MAQUINA_ID, totalAcumulado: doc ? doc.totalAcumulado : 0 });
     });
 });
 
 app.post('/api/zerar-caixa', (req, res) => {
-    db.update({ m: MAQUINA_ID }, { $set: { totalAcumulado: 0 } }, { upsert: true }, () => {
+    db.update({ maquina: MAQUINA_ID }, { $set: { totalAcumulado: 0 } }, { upsert: true }, () => {
         res.json({ success: true });
     });
 });
@@ -61,19 +54,16 @@ app.post('/api/simular-pix', async (req, res) => {
     try {
         const pulsosParaEnviar = obterQuantidadePulsos(parseFloat(valor));
         if (pulsosParaEnviar > 0) {
-            db.findOne({ m: MAQUINA_ID }, async (err, doc) => {
-                const atual = doc ? doc.totalAcumulado : 0;
-                const novoValor = Math.round((atual + parseFloat(valor)) * 100) / 100;
-                db.update({ m: MAQUINA_ID }, { m: MAQUINA_ID, totalAcumulado: novoValor }, { upsert: true });
-                
-                for (let i = 1; i <= pulsosParaEnviar; i++) {
-                    console.log("Pulso manual " + i + " de " + pulsosParaEnviar);
-                    await enviarSinalBlynk("V1", "1");
-                    await new Promise(r => setTimeout(r, 450)); 
-                    await enviarSinalBlynk("V1", "0");
-                    await new Promise(r => setTimeout(r, 450)); 
-                }
-            });
+            db.update({ maquina: MAQUINA_ID }, { $inc: { totalAcumulado: parseFloat(valor) } }, { upsert: true });
+            
+            // RITMO TRADICIONAL ROBUSTO: LIGA E DESLIGA O PINO V1
+            for (let i = 1; i <= pulsosParaEnviar; i++) {
+                console.log("Soltando pulso manual " + i + " de " + pulsosParaEnviar);
+                await enviarSinalBlynk("V1", "1");
+                await new Promise(r => setTimeout(r, 450));
+                await enviarSinalBlynk("V1", "0");
+                await new Promise(r => setTimeout(r, 450));
+            }
         }
         res.json({ success: true });
     } catch (erro) {
@@ -84,34 +74,44 @@ app.post('/api/simular-pix', async (req, res) => {
 app.post('/webhook', async (req, res) => {
     res.sendStatus(200); 
     const { action, type, data } = req.body;
+    console.log("[WEBHOOK] Notificacao de Pix recebida do Mercado Pago.");
+
     if (type === 'payment' || action === 'payment.created') {
         const idPagamento = data && data.id ? data.id : req.body.id;
         if (!idPagamento) return;
+
         try {
             const urlConsulta = "https://mercadopago.com" + idPagamento;
             const respostaMP = await axios.get(urlConsulta, {
                 headers: { 'Authorization': "Bearer " + MP_ACCESS_TOKEN }
             });
+
             if (respostaMP.data && respostaMP.data.status === 'approved') {
                 const valorPixReal = parseFloat(respostaMP.data.transaction_amount);
                 const pulsosParaEnviar = obterQuantidadePulsos(valorPixReal);
+
+                console.log("\n=== PIX REAL APROVADO: R$ " + valorPixReal.toFixed(2) + " ===");
+
                 if (pulsosParaEnviar > 0) {
-                    db.findOne({ m: MAQUINA_ID }, async (err, doc) => {
-                        const atual = doc ? doc.totalAcumulado : 0;
-                        const novoValor = Math.round((atual + valorPixReal) * 100) / 100;
-                        db.update({ m: MAQUINA_ID }, { m: MAQUINA_ID, totalAcumulado: novoValor }, { upsert: true });
-                        for (let i = 1; i <= pulsosParaEnviar; i++) {
-                            await enviarSinalBlynk("V1", "1");
-                            await new Promise(r => setTimeout(r, 450)); 
-                            await enviarSinalBlynk("V1", "0");
-                            await new Promise(r => setTimeout(r, 450)); 
-                        }
-                    });
+                    db.update({ maquina: MAQUINA_ID }, { $inc: { totalAcumulado: valorPixReal } }, { upsert: true });
+                    
+                    console.log("-> Despachando " + pulsosParaEnviar + " creditos para a Box-01...");
+                    for (let i = 1; i <= pulsosParaEnviar; i++) {
+                        await enviarSinalBlynk("V1", "1");
+                        await new Promise(r => setTimeout(r, 450));
+                        await enviarSinalBlynk("V1", "0");
+                        await new Promise(r => setTimeout(r, 450));
+                    }
+                    console.log("=== Creditos entregues na Jukebox! ===\n");
                 }
             }
-        } catch (erro) {}
+        } catch (erro) {
+            console.log("-> Erro na consulta do Mercado Pago:", erro.message);
+        }
     }
 });
+
+app.use((req, res) => { res.status(404).send("Rota nao encontrada"); });
 
 app.listen(3000, async () => {
     console.log('Servidor da Box-01 Ativo em Producao!');
