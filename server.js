@@ -1,181 +1,113 @@
 const express = require('express');
-const http = require('http');
+const bodyParser = require('body-parser');
 const WebSocket = require('ws');
 const cors = require('cors');
-const axios = require('axios');
-const Datastore = require('nedb');
+const https = require('https');
 
 const app = express();
-app.use(express.json());
+const PORTA = process.env.PORT || 10000;
+
+// Middleware
 app.use(cors());
+app.use(bodyParser.json());
 app.use(express.static('public'));
 
-// ========== 🔐 Credenciais do Mercado Pago ==========
-const MP_ACCESS_TOKEN = process.env.MP_ACCESS_TOKEN || '';
-const MP_PUBLIC_KEY = process.env.MP_PUBLIC_KEY || '';
+// Armazena conexões das caixinhas
+const caixinhas = new Map();
 
-// ========== 📂 Banco de dados ==========
-const db = new Datastore({ filename: 'jukebox.db', autoload: true });
-
-const maquinas = {
-  'Box-01': { faturamento: 0, online: false, ultimaAtualizacao: null },
-  'Box-02': { faturamento: 0, online: false, ultimaAtualizacao: null }
-};
-
-db.find({}, (err, docs) => {
-  docs.forEach(doc => {
-    if (maquinas[doc.nome]) {
-      maquinas[doc.nome].faturamento = doc.faturamento || 0;
-    }
-  });
-  console.log('📂 Dados carregados');
-});
-
-function salvarMaquina(nome) {
-  db.update({ nome }, { $set: { faturamento: maquinas[nome].faturamento } }, { upsert: true });
-}
-
-// ========== 🌐 Webhook — Mercado Pago ==========
-app.post('/webhook-mercadopago', async (req, res) => {
-  try {
-    const dados = req.body;
-    console.log('💰 Notificação recebida:', dados);
-
-    // Processa notificação do Mercado Pago
-    if (dados.topic === 'payment' || dados.type === 'payment') {
-      const paymentId = dados.resource || dados.data?.id;
-      
-      if (paymentId) {
-        // Consulta os detalhes do pagamento
-        const url = `https://api.mercadopago.com/v1/payments/${paymentId}`;
-        const resposta = await axios.get(url, {
-          headers: { Authorization: `Bearer ${MP_ACCESS_TOKEN}` }
-        });
-        
-        const pagamento = resposta.data;
-        
-        // Só processa se foi APROVADO
-        if (pagamento.status === 'approved') {
-          const valor = pagamento.transaction_amount;
-          const referencia = pagamento.external_reference || pagamento.description || 'Box-01';
-          
-          console.log(`✅ Pagamento aprovado: R$ ${valor} - Ref: ${referencia}`);
-          processarPagamento(referencia, valor);
-        }
-      }
-    }
-    
-    res.status(200).send({ ok: true });
-  } catch (erro) {
-    console.error('❌ Erro no webhook:', erro.message);
-    res.status(500).send({ erro: 'erro interno' });
-  }
-});
-
-// ========== ⚡ Processar Pagamento ==========
-function processarPagamento(identificador, valor) {
-  // Identifica qual máquina
-  let nomeMaquina = 'Box-01';
+// ==============================
+// WEBHOOK DO ASAAS
+// ==============================
+app.post('/webhook-asaas', (req, res) => {
+  const evento = req.body;
   
-  for (const nome in maquinas) {
-    if (identificador.includes(nome)) {
-      nomeMaquina = nome;
-      break;
+  console.log('📩 Notificação recebida do Asaas:');
+  console.log(JSON.stringify(evento, null, 2));
+
+  // Verifica se é um pagamento CONFIRMADO
+  if (evento.event === 'PAYMENT_CONFIRMED') {
+    const valor = evento.payment.value;
+    const referencia = evento.payment.externalReference || '';
+    const descricao = evento.payment.description || '';
+    const valorTotal = parseFloat(valor);
+
+    console.log(`💰 Pagamento confirmado! Valor: R$ ${valorTotal.toFixed(2)}, Ref: ${referencia} - ${descricao}`);
+
+    // ✅ REGRA: Só aceita valor inteiro
+    if (!Number.isInteger(valorTotal) || valorTotal <= 0) {
+      console.log(`⚠️ Valor com centavos ou inválido — NENHUM pulso enviado`);
+      return res.status(200).send('Valor ignorado');
+    }
+
+    const pulsos = Math.round(valorTotal);
+    console.log(`✅ ${valorTotal.toFixed(2)} = ${pulsos} pulsos`);
+
+    // Identifica qual box é pela referência ou descrição
+    let boxAlvo = 'BOX-01';
+    if (referencia.includes('02') || descricao.includes('BOX-02') || descricao.includes('02')) {
+      boxAlvo = 'BOX-02';
+    } else if (referencia.includes('01') || descricao.includes('BOX-01') || descricao.includes('01')) {
+      boxAlvo = 'BOX-01';
+    }
+
+    // Envia pulso para a caixinha correspondente
+    if (caixinhas.has(boxAlvo)) {
+      caixinhas.get(boxAlvo).send(JSON.stringify({
+        tipo: 'pulsos',
+        quantidade: pulsos,
+        valor: valorTotal
+      }));
+      console.log(`📡 Enviado ${pulsos} pulsos para ${boxAlvo}`);
+    } else {
+      console.log(`⚠️ ${boxAlvo} não está conectada no momento`);
     }
   }
 
-  if (!maquinas[nomeMaquina]) {
-    console.log(`⚠️ Máquina não encontrada: ${identificador}`);
-    return;
-  }
-
-  // Soma no faturamento
-  maquinas[nomeMaquina].faturamento += valor;
-  salvarMaquina(nomeMaquina);
-
-  // Converte valor → pulsos
-  let pulsos = 0;
-  if (valor >= 50) pulsos = 50;
-  else if (valor >= 20) pulsos = 20;
-  else if (valor >= 10) pulsos = 10;
-  else if (valor >= 5) pulsos = 5;
-  else if (valor >= 2) pulsos = 2;
-
-  console.log(`💵 ${nomeMaquina}: +R$ ${valor.toFixed(2)} → ${pulsos} pulsos`);
-
-  // Avisa todos conectados
-  avisarTodos({
-    tipo: 'pagamento',
-    maquina: nomeMaquina,
-    valor: valor,
-    pulsos: pulsos
-  });
-
-  // Envia comando para a caixinha
-  if (pulsos > 0) {
-    avisarTodos({ comando: 'pulso', quantidade: pulsos, maquina: nomeMaquina });
-  }
-}
-
-// ========== 🔌 WebSocket ==========
-const server = http.createServer(app);
-const wss = new WebSocket.Server({ noServer: true });
-
-server.on('upgrade', (request, socket, head) => {
-  wss.handleUpgrade(request, socket, head, (ws) => {
-    wss.emit('connection', ws, request);
-  });
+  res.status(200).send('OK');
 });
 
-wss.on('connection', (ws) => {
-  console.log('✅ Cliente conectou');
-  ws.send(JSON.stringify({ tipo: 'dados', maquinas }));
+// ==============================
+// WEB SOCKET — Comunicação com as caixinhas ESP32
+// ==============================
+const servidorWS = new WebSocket.Server({ noServer: true });
+
+servidorWS.on('connection', (ws) => {
+  let boxId = 'BOX-01';
 
   ws.on('message', (mensagem) => {
-    const texto = mensagem.toString();
-    console.log('📩', texto);
-
-    if (texto.startsWith('conectado:')) {
-      const nome = texto.split(':')[1];
-      if (maquinas[nome]) {
-        maquinas[nome].online = true;
-        maquinas[nome].ultimaAtualizacao = new Date();
-        avisarTodos({ tipo: 'status', nome, online: true });
+    try {
+      const dados = JSON.parse(mensagem);
+      
+      if (dados.tipo === 'identificacao' && dados.boxId) {
+        boxId = dados.boxId;
+        caixinhas.set(boxId, ws);
+        console.log(`✅ ${boxId} conectada ao servidor`);
+        ws.send(JSON.stringify({ tipo: 'status', online: true }));
       }
+    } catch (erro) {
+      console.log('Erro ao processar mensagem:', erro.message);
     }
+  });
 
-    if (texto.startsWith('adicionar:')) {
-      const [_, nome, valor] = texto.split(':');
-      processarPagamento(nome, parseFloat(valor));
-    }
+  ws.on('close', () => {
+    caixinhas.delete(boxId);
+    console.log(`❌ ${boxId} desconectou`);
+  });
 
-    if (texto.startsWith('zerar:')) {
-      const nome = texto.split(':')[1];
-      if (maquinas[nome]) {
-        maquinas[nome].faturamento = 0;
-        salvarMaquina(nome);
-        avisarTodos({ tipo: 'zerar', nome });
-      }
-    }
-
-    wss.clients.forEach(cliente => {
-      if (cliente !== ws && cliente.readyState === WebSocket.OPEN) {
-        cliente.send(texto);
-      }
-    });
+  ws.on('error', (erro) => {
+    console.log(`Erro na conexão de ${boxId}:`, erro.message);
   });
 });
 
-function avisarTodos(dados) {
-  wss.clients.forEach(cliente => {
-    if (cliente.readyState === WebSocket.OPEN) {
-      cliente.send(JSON.stringify(dados));
-    }
-  });
-}
-
-const PORTA = process.env.PORT || 3000;
-server.listen(PORTA, () => {
+// Integra WebSocket com Express
+app.server = app.listen(PORTA, () => {
   console.log(`🚀 Servidor rodando na porta ${PORTA}`);
-  console.log(`📲 Webhook: /webhook-mercadopago`);
 });
+
+app.server.on('upgrade', (requisicao, socket, cabecalhos) => {
+  servidorWS.handleUpgrade(requisicao, socket, cabecalhos, (ws) => {
+    servidorWS.emit('connection', ws, requisicao);
+  });
+});
+
+console.log('✅ Sistema pronto — Aguardando pagamentos e caixinhas!');
