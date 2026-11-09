@@ -1,156 +1,127 @@
-#include <WiFi.h>
-#include <HTTPClient.h>
+const http = require('http');
+const PORTA = process.env.PORT || 3000;
 
-// ===== CONFIGURAÇÕES =====
-const char* SSID = "brisa-Elaine";
-const char* SENHA = "Eloisa250816";
-const char* NOME_BOX = "jukebox_01";
-const char* SERVIDOR = "https://servidor-jukebox.onrender.com/webhook-esp32";
+const boxStatus = {};
+const filaPulsos = {};
+const historicoPagamentos = [];
 
-// PINOS
-#define LED_VERMELHO 25
-#define LED_VERDE 26
-#define LED_AZUL 27
-#define PULSO_MAQUINA 23
+const servidor = http.createServer((req, res) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-// ESTADO
-bool conectado = false;
-
-// ===== SETUP =====
-void setup() {
-  Serial.begin(115200);
-  
-  pinMode(LED_VERMELHO, OUTPUT);
-  pinMode(LED_VERDE, OUTPUT);
-  pinMode(LED_AZUL, OUTPUT);
-  pinMode(PULSO_MAQUINA,OUTPUT);
-  
-  Serial.println("Jukebox Pix — Iniciando...");
-  Serial.println("Conectando ao WiFi...");
-  conectaWiFi();
-}
-
-// ===== CONECTAR WIFI =====
-void conectaWiFi() {
-  WiFi.begin(SSID, SENHA);
-  int tentativas = 0;
-  
-  digitalWrite(LED_VERMELHO, LOW);
-  digitalWrite(LED_VERDE, LOW);
-  digitalWrite(LED_AZUL, HIGH);
-  
-  while (WiFi.status() != WL_CONNECTED && tentativas < 60) {
-    delay(500);
-    Serial.print(".");
-    digitalWrite(LED_AZUL, !digitalRead(LED_AZUL));
-    tentativas++;
-  }
-  
-  if (WiFi.status() == WL_CONNECTED) {
-    conectado = true;
-    digitalWrite(LED_AZUL, LOW);
-    digitalWrite(LED_VERDE, HIGH);
-    Serial.println("\n✅ CONECTADO!");
-    Serial.print("📍 IP: "); Serial.println(WiFi.localIP());
-    Serial.print("🆔 ID: "); Serial.println(NOME_BOX);
-    Serial.println("💰 Valores aceitos: R$2,00 | R$5,00 | R$10,00 | R$20,00 | R$50,00");
-    Serial.println("🚀 Pronto! Aguardando pagamentos...");
-    avisaServidorOnline();
-  } else {
-    conectado = false;
-    digitalWrite(LED_AZUL, LOW);
-    digitalWrite(LED_VERMELHO, HIGH);
-    Serial.println("\n❌ FALHA — confere rede e senha");
-  }
-}
-
-// ===== LOOP PRINCIPAL =====
-void loop() {
-  static unsigned long ultimaVerificacao = 0;
-  const long INTERVALO = 3000; // verifica a cada 3 segundos
-
-  // Reconecta se caiu
-  if (WiFi.status() != WL_CONNECTED) {
-    if (conectado) {
-      Serial.println("⚠️ WiFi perdido. Reconectando...");
-      conectado = false;
-      digitalWrite(LED_VERDE, LOW);
-      digitalWrite(LED_AZUL, HIGH);
-    }
-    conectaWiFi();
-    delay(3000);
+  if (req.method === 'OPTIONS') {
+    res.writeHead(200);
+    res.end();
     return;
   }
 
-  // Verifica servidor a cada 3 segundos
-  if (millis() - ultimaVerificacao >= INTERVALO) {
-    ultimaVerificacao = millis();
-    verificaComandos();
+  if (req.url === '/' && req.method === 'GET') {
+    res.writeHead(200, {'Content-Type': 'text/plain; charset=utf-8'});
+    res.end('Jukebox Pix esta funcionando! ' + new Date().toLocaleString('pt-BR'));
   }
-}
-
-// ===== VERIFICAR COMANDOS DO SERVIDOR =====
-void verificaComandos() {
-  HTTPClient http;
-  String url = String(SERVIDOR) + "?box=" + NOME_BOX;
-  
-  http.begin(url);
-  http.setTimeout(5000); // espera até 5s pela resposta
-  
-  int codigo = http.GET();
-  
-  if (codigo == 200) {
-    String resposta = http.getString();
-    resposta.trim();
-    int pulsos = resposta.toInt();
-    
-    if (pulsos > 0) {
-      Serial.print("💵 Recebido: ");
-      Serial.print(pulsos);
-      Serial.println(" pulsos");
-      executaPulsos(pulsos);
+  else if (req.url.startsWith('/online') && req.method === 'POST') {
+    let corpo = '';
+    req.on('data', d => corpo += d);
+    req.on('end', () => {
+      const params = new URLSearchParams(corpo);
+      const nomeBox = params.get('box');
+      const ip = params.get('ip');
+      boxStatus[nomeBox] = { online: true, ultimoPing: Date.now(), ip: ip };
+      if (!filaPulsos[nomeBox]) filaPulsos[nomeBox] = 0;
+      console.log(nomeBox + ' ONLINE - ' + ip);
+      res.writeHead(200, {'Content-Type': 'application/json'});
+      res.end(JSON.stringify({ok: true}));
+    });
+  }
+  else if (req.url.startsWith('/webhook-esp32') && req.method === 'GET') {
+    const url = new URL(req.url, 'http://' + req.headers.host);
+    const nomeBox = url.searchParams.get('box');
+    let qtd = 0;
+    if (filaPulsos[nomeBox]) {
+      qtd = filaPulsos[nomeBox];
+      filaPulsos[nomeBox] = 0;
     }
+    if (boxStatus[nomeBox]) {
+      boxStatus[nomeBox].ultimoPing = Date.now();
+      boxStatus[nomeBox].online = true;
+    }
+    res.writeHead(200, {'Content-Type': 'text/plain'});
+    res.end(String(qtd));
   }
-  http.end();
-}
+  else if (req.url === '/webhook-pagbank' && req.method === 'POST') {
+    let corpo = '';
+    req.on('data', d => corpo += d);
+    req.on('end', () => {
+      let dados;
+      try {
+        dados = JSON.parse(corpo);
+      } catch(e) {
+        dados = {};
+      }
+      const valor = Number(dados.valor || dados.amount || 0);
+      const nomeBox = dados.box || dados.referencia || 'Box-01';
+      let pulsos = 0;
+      if (valor === 2) pulsos = 2;
+      else if (valor === 5) pulsos = 5;
+      else if (valor === 10) pulsos = 10;
+      else if (valor === 20) pulsos = 20;
+      else if (valor === 50) pulsos = 50;
+      
+      if (pulsos > 0) {
+        filaPulsos[nomeBox] = (filaPulsos[nomeBox] || 0) + pulsos;
+        historicoPagamentos.unshift({
+          data: new Date().toLocaleString('pt-BR'),
+          box: nomeBox,
+          valor: valor,
+          pulsos: pulsos
+        });
+        console.log('Pagamento: ' + nomeBox + ' R$ ' + valor + ' = ' + pulsos + ' pulsos');
+      } else {
+        console.log('Valor nao aceito: R$ ' + valor);
+      }
+      res.writeHead(200, {'Content-Type': 'application/json'});
+      res.end(JSON.stringify({ok: true, pulsosEnviados: pulsos}));
+    });
+  }
+  else if (req.url === '/api/boxes' && req.method === 'GET') {
+    const agora = Date.now();
+    const lista = [];
+    for (const nome in boxStatus) {
+      const dados = boxStatus[nome];
+      lista.push({
+        nome: nome,
+        online: dados.online && (agora - dados.ultimoPing) < 10000,
+        ip: dados.ip
+      });
+    }
+    res.writeHead(200, {'Content-Type': 'application/json'});
+    res.end(JSON.stringify(lista));
+  }
+  else if (req.url === '/api/historico' && req.method === 'GET') {
+    res.writeHead(200, {'Content-Type': 'application/json'});
+    res.end(JSON.stringify(historicoPagamentos.slice(0, 100)));
+  }
+  else if (req.url.startsWith('/api/teste-pulso') && req.method === 'POST') {
+    const url = new URL(req.url, 'http://' + req.headers.host);
+    const nomeBox = url.searchParams.get('box');
+    const qtd = Number(url.searchParams.get('qtd') || 0);
+    filaPulsos[nomeBox] = (filaPulsos[nomeBox] || 0) + qtd;
+    console.log('Teste: ' + qtd + ' pulsos para ' + nomeBox);
+    res.writeHead(200, {'Content-Type': 'application/json'});
+    res.end(JSON.stringify({ok: true}));
+  }
+  else if (req.url === '/api/zerar' && req.method === 'POST') {
+    historicoPagamentos.length = 0;
+    res.writeHead(200, {'Content-Type': 'application/json'});
+    res.end(JSON.stringify({ok: true}));
+  }
+  else {
+    res.writeHead(404);
+    res.end('Nao encontrado');
+  }
+});
 
-// ===== EXECUTAR PULSOS NA MÁQUINA =====
-void executaPulsos(int quantidade) {
-  // Só aceita os valores certos!
-  if (quantidade != 2 && quantidade != 5 && quantidade != 10 && 
-      quantidade != 20 && quantidade != 50) {
-    Serial.println("⚠️ Valor não aceito — ignorado");
-    return;
-  }
-  
-  for (int i = 0; i < quantidade; i++) {
-    digitalWrite(PULSO_MAQUINA, HIGH);
-    delay(80);
-    digitalWrite(PULSO_MAQUINA, LOW);
-    delay(120);
-  }
-  Serial.print("✅ ");
-  Serial.print(quantidade);
-  Serial.println(" pulsos enviados!");
-}
-
-// ===== AVISAR SERVIDOR QUE ESTÁ ONLINE =====
-void avisaServidorOnline() {
-  HTTPClient http;
-  String url = "https://servidor-jukebox.onrender.com/online";
-  
-  http.begin(url);
-  http.setTimeout(8000);
-  http.addHeader("Content-Type", "application/x-www-form-urlencoded");
-  
-  String corpo = "box=" + String(NOME_BOX) + "&ip=" + WiFi.localIP().toString();
-  
-  int codigo = http.POST(corpo);
-  if (codigo == 200) {
-    Serial.println("📡 Servidor registrado com sucesso!");
-  } else {
-    Serial.print("⚠️ Servidor respondeu com código: ");
-    Serial.println(codigo);
-  }
-  http.end();
-}
+servidor.listen(PORTA, () => {
+  console.log('Servidor Jukebox Pix rodando na porta ' + PORTA);
+});
