@@ -1,5 +1,5 @@
 {
-  "name": "jukebox-pix",
+  "name": "jukebox-pix-servidor",
   "version": "1.0.0",
   "main": "servidor.js",
   "scripts": {
