@@ -1,47 +1,102 @@
-const http = require('http');
-const PORT = process.env.PORT || 3000;
+const express = require('express');
+const app = express();
+const porta = process.env.PORT || 10000;
 
-const filaPulsos = {};
+// Middleware
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-const servidor = http.createServer((req, res) => {
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+// Token do PagBank (pegado das variáveis de ambiente)
+const PAGBANK_TOKEN = process.env.PAGBANK_TOKEN || '';
 
-  if (req.url === '/' && req.method === 'GET') {
-    res.writeHead(200, {'Content-Type': 'text/plain; charset=utf-8'});
-    return res.end('Jukebox Pix esta funcionando! ' + new Date().toLocaleString('pt-BR'));
-  }
+// Armazena os pulsos pendentes
+let pulsos = [];
 
-  if (req.url.startsWith('/api/teste-pulso')) {
-    const partes = req.url.split('?box=');
-    if (partes.length < 2) { res.end('erro'); return; }
-    const boxEQuant = partes[1].split('&qtd=');
-    if (boxEQuant.length < 2) { res.end('erro'); return; }
-    const box = boxEQuant[0];
-    const qtd = parseInt(boxEQuant[1]);
-    
-    filaPulsos[box] = qtd;
-    console.log('✅ Pulso guardado: ' + box + ' = ' + qtd);
-    
-    res.writeHead(200, {'Content-Type': 'application/json'});
-    return res.end(JSON.stringify({ok: true, box: box, pulsos: qtd}));
-  }
-
-  if (req.url.startsWith('/webhook-esp32')) {
-    const partes = req.url.split('?box=');
-    const box = partes.length > 1 ? partes[1] : '';
-    const valor = filaPulsos[box] || 0;
-    filaPulsos[box] = 0;
-    res.writeHead(200, {'Content-Type': 'text/plain'});
-    return res.end(String(valor));
-  }
-
-  res.writeHead(404);
-  res.end('Nao encontrado');
+// Rota de teste
+app.get('/', (req, res) => {
+  res.send('✅ Servidor Jukebox está funcionando!');
 });
 
-servidor.listen(PORT, () => {
-  console.log('Servidor rodando na porta ' + PORT);
+// Rota para criar cobrança Pix
+app.post('/criar-pix', async (req, res) => {
+  try {
+    const { valor, descricao = 'Jukebox Brasil' } = req.body;
+    
+    if (!PAGBANK_TOKEN) {
+      return res.status(500).json({ erro: 'Token do PagBank não configurado' });
+    }
+
+    const resposta = await fetch('https://sandbox.api.pagseguro.com/orders', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${PAGBANK_TOKEN}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        reference_id: `jukebox-${Date.now()}`,
+        description: descricao,
+        amount: {
+          value: Math.round(valor * 100),
+          currency: 'BRL'
+        },
+        payment: {
+          methods: ['pix'],
+          pix: {
+            expiration: 3600
+          }
+        }
+      })
+    });
+
+    const dados = await resposta.json();
+    
+    if (dados.links && dados.links.length > 0) {
+      const qrcodePix = dados.links.find(l => l.media === 'image/png');
+      const codigoPix = dados.payment_response?.pix_copy_and_paste;
+      
+      pulsos.push({
+        id: dados.id,
+        valor: valor,
+        pago: false,
+        criadoEm: new Date()
+      });
+      
+      return res.json({
+        sucesso: true,
+        id: dados.id,
+        valor: valor,
+        qrcodeUrl: qrcodePix?.href,
+        codigoPix: codigoPix,
+        status: dados.status
+      });
+    }
+    
+    res.json({ sucesso: true, dados: dados });
+  } catch (erro) {
+    console.error('Erro ao criar Pix:', erro);
+    res.status(500).json({ erro: erro.message });
+  }
 });
 
+// Rota para o ESP32 verificar se tem pulso
+app.get('/verificar-pulso', (req, res) => {
+  const pendente = pulsos.find(p => !p.pago);
+  if (pendente) {
+    pendente.pago = true;
+    res.json({ temPulso: true, valor: pendente.valor });
+  } else {
+    res.json({ temPulso: false });
+  }
+});
+
+// Rota do Webhook (onde o PagBank avisa que foi pago)
+app.post('/webhook-pix', (req, res) => {
+  console.log('📩 Notificação recebida:', req.body);
+  res.sendStatus(200);
+});
+
+// Inicia o servidor
+app.listen(porta, () => {
+  console.log(`🚀 Servidor rodando na porta ${porta}`);
+});
 
