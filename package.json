@@ -1,8 +1,12 @@
 {
-  "name": "jukebox-pix-servidor",
+  "name": "jukebox-pix",
   "version": "1.0.0",
-  "main": "servidor.js",
+  "description": "Servidor Jukebox Pix",
+  "main": "src/servidor.js",
   "scripts": {
-    "start": "node servidor.js"
+    "start": "node src/servidor.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
   }
 }
